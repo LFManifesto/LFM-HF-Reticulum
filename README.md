@@ -261,7 +261,15 @@ freedvtnc2 --input-device 1 --output-device 1 --mode DATAC1 --rigctld-port 0
 
 Should start without errors. Press Ctrl+C to stop.
 
-Set ALSA audio levels:
+**Configure G90 Audio Input:**
+
+On the G90, you must set the audio input to LINE (not MIC) for Digirig operation:
+
+1. Press **FUNC** button
+2. Press **POW** button repeatedly until you see "INPUT"
+3. Use main knob to switch from "MIC" to **LINE**
+
+**Set ALSA audio levels:**
 
 ```bash
 amixer -c 3 sset 'Speaker' 64%
@@ -371,17 +379,18 @@ Console available at: `http://localhost:7657`
 ## Performance Characteristics
 
 **FreeDV DATAC1 Mode:**
-- Data rate: ~980 bits/second
-- Bandwidth: 1.7 kHz
-- Latency: 3-5 seconds per transmission
+- Data rate: 980 bits/second
+- Bandwidth: 1700 Hz
+- Frame size: 510 bytes
+- Frame duration: 4.18 seconds
 - Range: 50-5000+ km (band/propagation dependent)
 - Power: 1-10W typical
 
 **Reticulum Packet Overhead:**
-- Header: 2-3 bytes
-- Destination hash: 16 bytes  
-- Encryption overhead: ~48 bytes
-- Efficient for messages, not large file transfers. Use Brevity and Prowords. 
+- Header + Address: 18-34 bytes (depending on packet type)
+- Destination hash: 16 bytes
+- Link establishment: 297 bytes (3 packets)
+- Efficient for messages, not large file transfers. Use brevity and prowords. 
 
 ## Operational Security Guidance
 
@@ -408,9 +417,9 @@ lsusb
 arecord -l
 ls -la /dev/ttyUSB*
 
-# Test CAT/PTT
-rigctl -m 2 T 1  # Key radio
-rigctl -m 2 T 0  # Unkey
+# Test CAT/PTT (model 3088 = Xiegu G90)
+rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 1  # Key radio
+rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 0  # Unkey
 
 # Check Reticulum
 rnstatus
