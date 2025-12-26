@@ -1,14 +1,14 @@
 # ReticulumHF
 
-Reticulum mesh networking over HF radio using FreeDV.
+Reticulum over HF radio using FreeDV.
 
 ## Overview
 
-Runs Reticulum Network Stack over HF radio using FreeDV DATAC1 mode for modulation. Provides encrypted peer-to-peer communication without internet infrastructure.
+Runs Reticulum over HF radio using FreeDV DATAC1 mode for modulation. Provides encrypted peer-to-peer communication without internet infrastructure.
 
 ## Test Results
 
-Tested December 2025.
+Tested with two identical setups. Local test only (73 miles). Last test was in December of 2025.
 
 ### Test Environment
 
@@ -74,7 +74,7 @@ Range depends on HF propagation (ionosphere, solar activity, time of day).
                                        +---------+
 ```
 
-Data flow:
+Work Flow:
 1. User writes message in NomadNet
 2. Reticulum encrypts packet with recipient's public key
 3. freedvtnc2 modulates to FreeDV DATAC1 audio
