@@ -16,7 +16,7 @@ Download the SD card image, flash it, boot, configure via web portal.
 
 ### Download
 
-[reticulumhf-20260109.img.xz](https://drive.proton.me/urls/6K02M92ZWW#u1S5QaEqx7ui) (763MB)
+[reticulumhf-20260109.img.xz](https://drive.proton.me/urls/BGXQMTK1TR#R07kM0ISutto) (763MB)
 
 ### Setup
 
