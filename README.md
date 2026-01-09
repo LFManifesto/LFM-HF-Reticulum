@@ -6,7 +6,74 @@ Reticulum over HF radio using FreeDV.
 
 Runs Reticulum over HF radio using FreeDV DATAC1 mode for modulation. Provides encrypted peer-to-peer communication without internet infrastructure.
 
-## Test Results
+Two installation methods:
+- **Pre-built Image** - Flash and go. Includes web-based setup wizard and TCP bridge for Sideband.
+- **Manual Installation** - Build everything yourself on existing Pi.
+
+## Pre-built Image
+
+Download the SD card image, flash it, boot, configure via web portal.
+
+### Download
+
+[reticulumhf-20260109.img.xz](https://drive.proton.me/urls/6K02M92ZWW#u1S5QaEqx7ui) (763MB)
+
+### Setup
+
+1. Flash to SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/) - select "Use custom"
+2. Insert SD card, connect radio via Digirig, power on
+3. Connect phone to WiFi: **ReticulumHF-Setup** (password: `reticulumhf`)
+4. Open **http://192.168.4.1** in browser
+5. Complete setup wizard - select radio model, verify audio levels
+6. In Sideband, add TCP interface: `192.168.4.1:4242`
+
+### What's Included
+
+- Raspberry Pi OS Bookworm Lite (64-bit)
+- RNS with TCP server on port 4242
+- freedvtnc2 (FreeDV DATAC1 modem)
+- codec2 (built from source)
+- i2pd (I2P transport)
+- Hamlib rigctld
+- Web portal with service controls
+
+### Network
+
+| | |
+|---|---|
+| WiFi SSID | ReticulumHF-Setup |
+| WiFi Password | reticulumhf |
+| Gateway IP | 192.168.4.1 |
+| RNS TCP | 4242 |
+| SSH | pi / reticulumhf |
+
+### Sideband Configuration
+
+| Setting | Value |
+|---------|-------|
+| Host | 192.168.4.1 |
+| Port | 4242 |
+| Interface Type | TCP Client |
+
+### Audio Tuning
+
+```bash
+ssh pi@192.168.4.1
+alsamixer
+```
+
+- Press F6 to select USB audio device
+- Press F4 for capture view
+- Set capture 70-80%, playback 40-60%
+- Save: `sudo alsactl store`
+
+---
+
+## Manual Installation
+
+Build everything from scratch on a fresh Raspberry Pi OS installation.
+
+### Test Results
 
 Tested with two identical setups. Local test only (73 miles). Last test was in December of 2025.
 
@@ -37,16 +104,7 @@ From codec2 documentation (https://github.com/drowe67/codec2/blob/main/README_da
 
 Range depends on HF propagation (ionosphere, solar activity, time of day).
 
-### Test Outcome
-
-| Test | Result |
-|------|--------|
-| CAT control via rigctld | Pass |
-| PTT keying | Pass |
-| FreeDV DATAC1 modulation | Pass |
-| NomadNet announcement TX | Pass |
-
-## Architecture
+### Architecture
 
 ```
 +-------------+      +----------+      +-----------+
@@ -80,8 +138,6 @@ Work Flow:
 3. freedvtnc2 modulates to FreeDV DATAC1 audio
 4. rigctld keys radio, audio transmits over HF
 5. Remote station decodes and delivers to NomadNet
-
-## Installation
 
 ### Step 1: System Preparation
 
@@ -232,6 +288,8 @@ In NomadNet:
 
 Radio should key up for 3-5 seconds and transmit.
 
+---
+
 ## Optional: I2P Bridge
 
 For base stations bridging HF to internet:
@@ -302,17 +360,37 @@ tail -f ~/.reticulum/logfile    # Live log
 - Check G90 is in correct mode (USB-D for data)
 - Verify rigctld is running on port 4532
 
+**WiFi AP not visible (pre-built image):**
+- Wait 60 seconds after power on
+- Check Pi LEDs (solid green = booted)
+- Power cycle Pi
+
+**Sideband won't connect (pre-built image):**
+- Verify connected to ReticulumHF-Setup WiFi
+- Check rnsd running: `ssh pi@192.168.4.1 "systemctl status reticulumhf-rnsd"`
+- Verify port 4242: `ssh pi@192.168.4.1 "ss -tlnp | grep 4242"`
+
+## Verified Hardware
+
+| Component | Model |
+|-----------|-------|
+| Computer | Raspberry Pi 4 (4GB) |
+| Radio | Xiegu G90 (Hamlib 3088) |
+| Interface | Digirig Mobile |
+| Phone App | Sideband (Android) |
+
 ## References
 
 Software:
-- Reticulum Manual: https://markqvist.github.io/Reticulum/manual/ (accessed December 2025)
-- codec2 Data Modes: https://github.com/drowe67/codec2/blob/main/README_data.md (accessed December 2025)
-- freedvtnc2: https://github.com/xssfox/freedvtnc2 (accessed December 2025)
-- Hamlib Supported Radios: https://github.com/Hamlib/Hamlib/wiki/Supported-Radios (accessed December 2025)
+- Reticulum Manual: https://markqvist.github.io/Reticulum/manual/
+- codec2 Data Modes: https://github.com/drowe67/codec2/blob/main/README_data.md
+- freedvtnc2: https://github.com/xssfox/freedvtnc2
+- Sideband: https://github.com/markqvist/Sideband
+- Hamlib Supported Radios: https://github.com/Hamlib/Hamlib/wiki/Supported-Radios
 
 Propagation:
 - prop.kc2g.com: https://prop.kc2g.com/ - Real-time MUF/foF2 maps
-- VOACAP Online: https://www.voacap.com/hf/ - HF propagation prediction (ITU-R P.533)
+- VOACAP Online: https://www.voacap.com/hf/ - HF propagation prediction
 - HamQSL Solar Data: https://www.hamqsl.com/solar.html - Current solar indices
 
 ## License
