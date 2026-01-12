@@ -1,0 +1,23 @@
+[Unit]
+Description=FreeDV TNC for ReticulumHF
+After=network.target rigctld.service
+Wants=rigctld.service
+Requires=rigctld.service
+ConditionPathExists=/etc/reticulumhf/.setup_complete
+ConditionPathExists=/etc/reticulumhf/config.env
+# Restart limits - must be in [Unit] section
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+Group=audio
+Environment="PATH=/home/pi/.local/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/etc/reticulumhf/config.env
+ExecStart=/bin/bash -c 'exec $FREEDVTNC2_CMD'
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

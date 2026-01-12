@@ -1,0 +1,18 @@
+[Unit]
+Description=ReticulumHF First Boot Setup
+Documentation=https://github.com/LFManifesto/ReticulumHF
+# Don't wait for network - we ARE setting up the network
+After=basic.target
+# NOTE: Do NOT use Before= here - it causes deadlock with systemctl calls in script
+ConditionPathExists=!/etc/reticulumhf/.setup_complete
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash /opt/reticulumhf/scripts/first-boot.sh
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

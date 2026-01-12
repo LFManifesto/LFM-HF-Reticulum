@@ -33,7 +33,6 @@ Download the SD card image, flash it, boot, configure via web portal.
 - RNS with TCP server on port 4242
 - freedvtnc2 (FreeDV DATAC1 modem)
 - codec2 (built from source)
-- i2pd (I2P transport)
 - Hamlib rigctld
 - Web portal with service controls
 
@@ -289,31 +288,6 @@ In NomadNet:
 Radio should key up for 3-5 seconds and transmit.
 
 ---
-
-## Optional: I2P Bridge
-
-For base stations bridging HF to internet:
-
-```bash
-sudo apt install -y apt-transport-https curl
-curl -o i2p-archive-keyring.gpg https://geti2p.net/_static/i2p-archive-keyring.gpg
-sudo cp i2p-archive-keyring.gpg /usr/share/keyrings/
-echo "deb [signed-by=/usr/share/keyrings/i2p-archive-keyring.gpg] https://deb.i2p.net/ bookworm main" \
-    | sudo tee /etc/apt/sources.list.d/i2p.list
-sudo apt update
-sudo apt install -y i2p i2p-keyring
-sudo systemctl enable i2p
-sudo systemctl start i2p
-```
-
-Add to `~/.reticulum/config`:
-```ini
-  [[I2P Interface]]
-    type = I2PInterface
-    enabled = yes
-    connectable = yes
-    peers = kfamlmwnlw3acqfxip4x6kt53i2tr4ksp5h4qxwvxhoq7mchpolq.b32.i2p
-```
 
 ## Troubleshooting
 

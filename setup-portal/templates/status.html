@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ReticulumHF Status</title>
+    <style>
+        :root {
+            /* Light Fighter Manifesto colors */
+            --bg: #0a0a0a;
+            --bg-secondary: #111111;
+            --surface: #141414;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-secondary: #b8b8b8;
+            --text-muted: #888888;
+            --accent: #c92a2a;
+            --accent-hover: #e03131;
+            --success: #4ade80;
+            --error: #c92a2a;
+            --warning: #f59e0b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 700px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 { font-size: 1.8rem; margin-bottom: 5px; }
+        .subtitle { color: var(--text-muted); font-size: 0.9rem; }
+
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .status-row:last-child { border-bottom: none; }
+
+        .status-label { color: var(--text-muted); }
+
+        .status-value {
+            font-family: monospace;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .indicator-active { background: var(--success); }
+        .indicator-inactive { background: var(--error); }
+        .indicator-pending { background: var(--accent); animation: pulse 1s infinite; }
+        .indicator-warning { background: var(--warning); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn:hover { background: #444; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-danger {
+            background: var(--error);
+            color: #fff;
+        }
+        .btn-danger:hover { background: var(--accent-hover); }
+
+        .btn-small {
+            padding: 8px 14px;
+            font-size: 0.85rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .rnstatus-output {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .info-box {
+            background: rgba(201, 42, 42, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .info-box h3 {
+            color: var(--accent);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .info-box code {
+            background: var(--bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .info-box p {
+            margin-bottom: 8px;
+        }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-box-muted {
+            border-color: var(--text-muted);
+            background: rgba(136, 136, 136, 0.1);
+        }
+        .info-box-muted h3 { color: var(--text-muted); }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        footer a { color: var(--accent); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        .error-text { color: var(--error); }
+
+        .copy-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg);
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .copy-box code {
+            flex: 1;
+            font-size: 0.95rem;
+            background: transparent;
+            padding: 0;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            padding: 6px 12px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:hover { background: var(--accent-hover); }
+        .copy-btn.copied { background: var(--success); }
+
+        .cmd-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+        }
+
+        .cmd-row code {
+            background: var(--bg);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .cmd-desc {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .lxmf-address {
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            color: var(--success);
+        }
+
+        .version-info {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .version-info span {
+            display: flex;
+            gap: 5px;
+        }
+
+        .version-info strong {
+            color: var(--text-secondary);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--surface);
+            border-radius: 12px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 80vh;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-header h3 { margin: 0; }
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .modal-close:hover { color: var(--text); }
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(80vh - 60px);
+        }
+        .log-output {
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        /* System health styles */
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+        .health-item {
+            text-align: center;
+            padding: 15px 10px;
+            background: var(--bg);
+            border-radius: 8px;
+        }
+        .health-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .health-value.warning { color: var(--warning); }
+        .health-value.danger { color: var(--error); }
+        .health-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        /* Service row with controls */
+        .service-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 10px;
+        }
+        .service-row:last-child { border-bottom: none; }
+        .service-info { flex: 1; }
+        .service-name { color: var(--text-muted); }
+        .service-status {
+            font-family: monospace;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        .service-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .btn-icon {
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+        }
+        .btn-icon:hover { background: var(--border); }
+
+        /* Connected clients */
+        .client-list {
+            font-size: 0.9rem;
+        }
+        .client-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .client-item:last-child { border-bottom: none; }
+        .no-clients {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ReticulumHF Gateway</h1>
+            <p class="subtitle" id="system-subtitle">{{ system_info.pi_model or system_info.os }}</p>
+            <p class="subtitle" id="radio-config" style="margin-top: 5px;">Loading...</p>
+        </header>
+
+        <!-- Gateway Info Card -->
+        <div class="card">
+            <div class="card-title">Gateway Status</div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span class="indicator indicator-active" id="gateway-indicator"></span>
+                <span id="gateway-status-text">TCP Bridge Active</span>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Your LXMF address is in your phone app (Sideband/Columba).<br>
+                This Pi acts as a gateway to route messages over HF radio.
+            </p>
+        </div>
+
+        <!-- System Health Card -->
+        <div class="card">
+            <div class="card-title">System Health</div>
+            <div class="health-grid" id="health-grid">
+                <div class="health-item">
+                    <div class="health-value" id="health-temp">--</div>
+                    <div class="health-label">CPU Temp</div>
+                </div>
+                <div class="health-item">
+                    <div class="health-value" id="health-cpu">--</div>
+                    <div class="health-label">Load Avg</div>
+                </div>
+                <div class="health-item">
+                    <div class="health-value" id="health-mem">--</div>
+                    <div class="health-label">Memory</div>
+                </div>
+                <div class="health-item">
+                    <div class="health-value" id="health-disk">--</div>
+                    <div class="health-label">Disk</div>
+                </div>
+                <div class="health-item">
+                    <div class="health-value" id="health-uptime">--</div>
+                    <div class="health-label">Uptime</div>
+                </div>
+                <div class="health-item">
+                    <div class="health-value" id="health-clients">--</div>
+                    <div class="health-label">Clients</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Service Status Card -->
+        <div class="card">
+            <div class="card-title">Service Status</div>
+
+            <div class="service-row">
+                <div class="service-info">
+                    <div class="service-name">rnsd (Reticulum Daemon)</div>
+                    <div class="service-status" id="rnsd-status">
+                        <span class="indicator indicator-pending"></span>
+                        Checking...
+                    </div>
+                </div>
+                <div class="service-actions">
+                    <button class="btn btn-icon" onclick="controlService('reticulumhf-rnsd', 'restart')" title="Restart">R</button>
+                    <button class="btn btn-icon" onclick="showLogs('reticulumhf-rnsd')" title="Logs">L</button>
+                </div>
+            </div>
+
+            <div class="service-row">
+                <div class="service-info">
+                    <div class="service-name">rigctld (CAT Control)</div>
+                    <div class="service-status" id="rigctld-status">
+                        <span class="indicator indicator-pending"></span>
+                        Checking...
+                    </div>
+                </div>
+                <div class="service-actions">
+                    <button class="btn btn-icon" onclick="controlService('rigctld', 'restart')" title="Restart">R</button>
+                    <button class="btn btn-icon" onclick="showLogs('rigctld')" title="Logs">L</button>
+                </div>
+            </div>
+
+            <div class="service-row">
+                <div class="service-info">
+                    <div class="service-name">freedvtnc2 (HF Modem)</div>
+                    <div class="service-status" id="freedvtnc2-status">
+                        <span class="indicator indicator-pending"></span>
+                        Checking...
+                    </div>
+                </div>
+                <div class="service-actions">
+                    <button class="btn btn-icon" onclick="controlService('freedvtnc2', 'restart')" title="Restart">R</button>
+                    <button class="btn btn-icon" onclick="showLogs('freedvtnc2')" title="Logs">L</button>
+                </div>
+            </div>
+
+            <div class="service-row">
+                <div class="service-info">
+                    <div class="service-name">hostapd (WiFi AP)</div>
+                    <div class="service-status" id="wifi-status">
+                        <span class="indicator indicator-pending"></span>
+                        Checking...
+                    </div>
+                </div>
+                <div class="service-actions">
+                    <button class="btn btn-icon" onclick="controlService('hostapd', 'restart')" title="Restart">R</button>
+                    <button class="btn btn-icon" onclick="showLogs('hostapd')" title="Logs">L</button>
+                </div>
+            </div>
+
+            <div class="service-row">
+                <div class="service-info">
+                    <div class="service-name">dnsmasq (DHCP/DNS)</div>
+                    <div class="service-status" id="dnsmasq-status">
+                        <span class="indicator indicator-pending"></span>
+                        Checking...
+                    </div>
+                </div>
+                <div class="service-actions">
+                    <button class="btn btn-icon" onclick="controlService('dnsmasq', 'restart')" title="Restart">R</button>
+                    <button class="btn btn-icon" onclick="showLogs('dnsmasq')" title="Logs">L</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Connected Clients Card -->
+        <div class="card">
+            <div class="card-title">Connected Clients</div>
+            <div id="clients-list" class="client-list">
+                <p class="no-clients">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Network Status Card -->
+        <div class="card">
+            <div class="card-title">Reticulum Network Status</div>
+            <div id="rnstatus-container" class="rnstatus-output">
+                Loading rnstatus...
+            </div>
+        </div>
+
+        <!-- SSH Instructions -->
+        <div class="info-box">
+            <h3>Connect via SSH</h3>
+            <p>Open a terminal and run:</p>
+            <div class="copy-box">
+                <code id="ssh-cmd">ssh pi@{{ system_info.ip_address or 'reticulumhf.local' }}</code>
+                <button class="copy-btn" onclick="copyText('ssh-cmd')">Copy</button>
+            </div>
+            <p style="margin-top: 10px;"><strong>Password:</strong> <code>reticulumhf</code></p>
+        </div>
+
+        <!-- Sideband/Columba Setup Instructions -->
+        <div class="info-box">
+            <h3>Connect with Sideband or Columba</h3>
+
+            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0;"><strong>Step 1:</strong> Install app on your phone</p>
+                <ul style="margin: 0 0 0 20px; font-size: 0.9rem;">
+                    <li><a href="https://github.com/markqvist/Sideband/releases" target="_blank" style="color: var(--accent);">Sideband</a> (Android/Linux/macOS/Windows)</li>
+                    <li><a href="https://github.com/torlando-tech/columba" target="_blank" style="color: var(--accent);">Columba</a> (Android - lighter weight)</li>
+                </ul>
+            </div>
+
+            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0;"><strong>Step 2:</strong> Connect phone to WiFi</p>
+                <p style="margin: 0; font-size: 0.95rem;">Network: <strong id="wifi-ssid-display">ReticulumHF</strong></p>
+            </div>
+
+            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0;"><strong>Step 3:</strong> Configure Sideband TCP Interface</p>
+                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">In Sideband: Settings → Connectivity → Add Interface → TCP Client</p>
+                <table style="width: 100%; margin-top: 10px; font-size: 0.9rem;">
+                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">TCP Host</td><td style="padding: 4px 8px;"><code id="gateway-host">{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
+                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">TCP Port</td><td style="padding: 4px 8px;"><code>4242</code></td></tr>
+                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">IFAC Network Name</td><td style="padding: 4px 8px;"><code id="ifac-name-display">(not set)</code></td></tr>
+                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">IFAC Passphrase</td><td style="padding: 4px 8px;"><code id="ifac-pass-display">(not set)</code></td></tr>
+                </table>
+            </div>
+
+            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px;">
+                <p style="margin: 0 0 8px 0;"><strong>Step 4:</strong> Start messaging!</p>
+                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">
+                    Messages route: Phone → Gateway → Radio → HF
+                </p>
+            </div>
+        </div>
+
+        <!-- Advanced SSH Access -->
+        <div class="info-box info-box-muted">
+            <h3>Advanced: SSH Access</h3>
+            <p>For terminal access and diagnostics:</p>
+            <div class="copy-box">
+                <code id="ssh-adv-cmd">ssh pi@{{ system_info.ip_address or '192.168.4.1' }}</code>
+                <button class="copy-btn" onclick="copyText('ssh-adv-cmd')">Copy</button>
+            </div>
+        </div>
+
+        <!-- Quick Commands -->
+        <div class="info-box">
+            <h3>Diagnostic Commands (via SSH)</h3>
+            <div class="cmd-row"><code>rnstatus</code> <span class="cmd-desc">Check Reticulum network</span></div>
+            <div class="cmd-row"><code>journalctl -u freedvtnc2 -f</code> <span class="cmd-desc">View HF modem logs</span></div>
+            <div class="cmd-row"><code>aplay -l</code> <span class="cmd-desc">List audio devices</span></div>
+        </div>
+
+        <!-- Audio Note -->
+        <div class="info-box info-box-muted">
+            <h3>Adjusting Audio Levels</h3>
+            <p>If your signal is too loud or quiet, adjust via SSH:</p>
+            <div class="cmd-row"><code>amixer -c 1 sset 'Speaker' 64%</code> <span class="cmd-desc">Output level</span></div>
+            <div class="cmd-row"><code>amixer -c 1 sset 'Mic' 75%</code> <span class="cmd-desc">Input level</span></div>
+            <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">
+                Replace <code>-c 1</code> with your audio card number from <code>aplay -l</code>
+            </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="btn-group">
+            <button class="btn" onclick="refreshStatus()">Refresh Status</button>
+            <button class="btn" onclick="restartServices()">Restart Services</button>
+            <button class="btn btn-danger" onclick="resetSetup()">Reconfigure</button>
+        </div>
+
+        <!-- System Control -->
+        <div class="btn-group" style="margin-top: 10px;">
+            <button class="btn" onclick="rebootPi()">Reboot</button>
+            <button class="btn btn-danger" onclick="shutdownPi()">Shutdown</button>
+        </div>
+
+        <!-- Version Info -->
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-title">Software Versions</div>
+            <div id="version-info" class="version-info">
+                Loading versions...
+            </div>
+        </div>
+
+        <footer>
+            <p>ReticulumHF by <a href="https://lightfightermanifesto.org" target="_blank">Light Fighter Manifesto</a></p>
+            <p style="margin-top: 8px;">
+                <a href="https://github.com/LFManifesto/ReticulumHF" target="_blank">GitHub</a> |
+                <a href="https://markqvist.github.io/Reticulum/manual/" target="_blank">Reticulum Manual</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Logs Modal -->
+    <div class="modal" id="logs-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="logs-modal-title">Service Logs</h3>
+                <button class="modal-close" onclick="closeLogsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="log-output" id="logs-output">Loading logs...</div>
+                <div class="btn-group" style="margin-top: 15px;">
+                    <button class="btn btn-small" onclick="refreshLogs()">Refresh</button>
+                    <button class="btn btn-small" onclick="loadMoreLogs()">Load More</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cache-busting fetch wrapper - ensures fresh data every time
+        async function apiFetch(url, options = {}) {
+            const bustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+            return fetch(bustUrl, { ...options, cache: 'no-store' });
+        }
+
+        // Fetch and display LXMF address
+        async function fetchLxmfAddress() {
+            try {
+                const response = await apiFetch('/api/lxmf-address');
+                const data = await response.json();
+                const addrEl = document.getElementById('lxmf-address');
+                const noteEl = document.getElementById('lxmf-note');
+                const copyBtn = document.getElementById('lxmf-copy-btn');
+
+                if (data.success && data.address) {
+                    addrEl.textContent = data.address;
+                    noteEl.textContent = data.note || 'Share this address to receive messages';
+                    copyBtn.style.display = 'block';
+                } else {
+                    addrEl.textContent = 'Not generated yet';
+                    addrEl.classList.remove('lxmf-address');
+                    addrEl.style.color = 'var(--text-muted)';
+                    noteEl.textContent = data.note || 'Address will appear once identity is created';
+                    copyBtn.style.display = 'none';
+                }
+            } catch (err) {
+                document.getElementById('lxmf-address').textContent = 'Error loading';
+            }
+        }
+
+        // Fetch and display config info
+        async function fetchConfigInfo() {
+            try {
+                const response = await apiFetch('/api/config-info');
+                const data = await response.json();
+                const configEl = document.getElementById('radio-config');
+
+                if (data.radio) {
+                    configEl.textContent = `Radio: ${data.radio}`;
+                } else {
+                    configEl.textContent = 'Radio: Not configured';
+                }
+            } catch (err) {
+                document.getElementById('radio-config').textContent = 'Radio: Unknown';
+            }
+        }
+
+        // Fetch and display versions
+        async function fetchVersions() {
+            try {
+                const response = await apiFetch('/api/versions');
+                const data = await response.json();
+                const versionEl = document.getElementById('version-info');
+
+                versionEl.innerHTML = `
+                    <span><strong>RNS:</strong> ${data.rns || 'unknown'}</span>
+                    <span><strong>NomadNet:</strong> ${data.nomadnet || 'unknown'}</span>
+                    <span><strong>freedvtnc2:</strong> ${data.freedvtnc2 || 'unknown'}</span>
+                `;
+            } catch (err) {
+                document.getElementById('version-info').textContent = 'Error loading versions';
+            }
+        }
+
+        // Check service status
+        async function checkServiceStatus() {
+            try {
+                const response = await apiFetch('/api/service-status');
+                const data = await response.json();
+
+                updateServiceIndicator('rnsd-status', data.rnsd);
+                updateServiceIndicator('rigctld-status', data.rigctld);
+                updateServiceIndicator('freedvtnc2-status', data.freedvtnc2);
+                updateServiceIndicator('dnsmasq-status', data.dnsmasq);
+
+                // Update gateway indicator
+                const gwIndicator = document.getElementById('gateway-indicator');
+                const gwText = document.getElementById('gateway-status-text');
+                if (gwIndicator && gwText) {
+                    if (data.rnsd && data.rnsd.running) {
+                        gwIndicator.className = 'indicator indicator-active';
+                        gwText.textContent = 'TCP Bridge Active (port 4242)';
+                    } else {
+                        gwIndicator.className = 'indicator indicator-inactive';
+                        gwText.textContent = 'TCP Bridge Offline';
+                    }
+                }
+
+                // Check WiFi AP status (hostapd)
+                if (data.wifi) {
+                    const wifiEl = document.getElementById('wifi-status');
+                    if (data.wifi.running) {
+                        wifiEl.innerHTML = `<span class="indicator indicator-active"></span> ${data.wifi.ssid || 'Active'}`;
+                        const ssidDisplay = document.getElementById('wifi-ssid-display');
+                        if (ssidDisplay) ssidDisplay.textContent = data.wifi.ssid || 'ReticulumHF';
+                    } else {
+                        wifiEl.innerHTML = '<span class="indicator indicator-inactive"></span> Stopped';
+                    }
+                } else {
+                    document.getElementById('wifi-status').innerHTML = '<span class="indicator indicator-inactive"></span> Not configured';
+                }
+
+                // Update gateway config display
+                if (data.gateway) {
+                    const ifacNameEl = document.getElementById('ifac-name-display');
+                    const ifacPassEl = document.getElementById('ifac-pass-display');
+                    if (ifacNameEl) {
+                        ifacNameEl.textContent = data.gateway.ifac_name || '(not set)';
+                    }
+                    if (ifacPassEl) {
+                        ifacPassEl.textContent = data.gateway.ifac_pass_set ? '(configured)' : '(not set)';
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to check service status:', err);
+            }
+        }
+
+        function updateServiceIndicator(elementId, status) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            if (status && status.running) {
+                element.innerHTML = '<span class="indicator indicator-active"></span> Running';
+            } else {
+                element.innerHTML = '<span class="indicator indicator-inactive"></span> Stopped';
+            }
+        }
+
+        // Fetch rnstatus
+        async function fetchRnstatus() {
+            const container = document.getElementById('rnstatus-container');
+
+            try {
+                const response = await apiFetch('/api/rnstatus');
+                const data = await response.json();
+
+                if (data.success) {
+                    container.textContent = data.output;
+                } else {
+                    container.innerHTML = '<span class="error-text">Error: ' + data.error + '</span>';
+                }
+            } catch (err) {
+                container.innerHTML = '<span class="error-text">Failed to fetch rnstatus: ' + err.message + '</span>';
+            }
+        }
+
+        async function restartServices() {
+            if (!confirm('Restart all ReticulumHF services?')) return;
+
+            try {
+                const response = await apiFetch('/api/restart-services', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Services restarting...');
+                    setTimeout(refreshStatus, 3000);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Failed to restart services: ' + err.message);
+            }
+        }
+
+        async function resetSetup() {
+            if (!confirm('Reset configuration and re-run setup wizard?\n\nThis will stop radio services and let you reconfigure.')) return;
+
+            try {
+                const response = await apiFetch('/api/reset-setup', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Failed to reset setup: ' + err.message);
+            }
+        }
+
+        async function rebootPi() {
+            if (!confirm('Reboot the ReticulumHF gateway?\n\nThis will temporarily disconnect all services.')) return;
+
+            try {
+                const response = await apiFetch('/api/reboot', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Rebooting... Page will reconnect when ready.');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Failed to reboot: ' + err.message);
+            }
+        }
+
+        async function shutdownPi() {
+            if (!confirm('Shut down the ReticulumHF gateway?\n\nYou will need physical access to turn it back on.')) return;
+
+            try {
+                const response = await apiFetch('/api/shutdown', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Shutting down... Wait for green LED to stop blinking before unplugging.');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Failed to shutdown: ' + err.message);
+            }
+        }
+
+        // Copy to clipboard function (with fallback for HTTP)
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            const btn = document.getElementById(elementId).nextElementSibling;
+
+            // Try modern clipboard API first, fallback for HTTP
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => showCopied(btn)).catch(() => fallbackCopy(text, btn));
+            } else {
+                fallbackCopy(text, btn);
+            }
+        }
+
+        function fallbackCopy(text, btn) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showCopied(btn);
+            } catch (err) {
+                btn.textContent = 'Failed';
+                setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function showCopied(btn) {
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = 'Copy';
+                btn.classList.remove('copied');
+            }, 2000);
+        }
+
+        // System health
+        async function fetchSystemHealth() {
+            try {
+                const response = await apiFetch('/api/system-health');
+                const data = await response.json();
+
+                // CPU Temp
+                const tempEl = document.getElementById('health-temp');
+                if (data.cpu_temp !== null) {
+                    tempEl.textContent = data.cpu_temp + 'C';
+                    tempEl.className = 'health-value' + (data.cpu_temp > 70 ? ' danger' : data.cpu_temp > 60 ? ' warning' : '');
+                }
+
+                // Load average (just show first number)
+                if (data.load_avg) {
+                    document.getElementById('health-cpu').textContent = data.load_avg.split(',')[0];
+                }
+
+                // Memory
+                if (data.memory_percent !== null) {
+                    const memEl = document.getElementById('health-mem');
+                    memEl.textContent = data.memory_percent + '%';
+                    memEl.className = 'health-value' + (data.memory_percent > 90 ? ' danger' : data.memory_percent > 75 ? ' warning' : '');
+                }
+
+                // Disk
+                if (data.disk_percent !== null) {
+                    const diskEl = document.getElementById('health-disk');
+                    diskEl.textContent = data.disk_percent + '%';
+                    diskEl.className = 'health-value' + (data.disk_percent > 90 ? ' danger' : data.disk_percent > 75 ? ' warning' : '');
+                }
+
+                // Uptime
+                if (data.uptime) {
+                    document.getElementById('health-uptime').textContent = data.uptime;
+                }
+            } catch (err) {
+                console.error('Failed to fetch system health:', err);
+            }
+        }
+
+        // Connected clients
+        async function fetchConnectedClients() {
+            try {
+                const response = await apiFetch('/api/connected-clients');
+                const data = await response.json();
+                const clientsEl = document.getElementById('clients-list');
+                const countEl = document.getElementById('health-clients');
+
+                if (data.success) {
+                    countEl.textContent = data.count;
+
+                    if (data.clients.length === 0) {
+                        clientsEl.innerHTML = '<p class="no-clients">No clients connected</p>';
+                    } else {
+                        clientsEl.innerHTML = data.clients.map(c => `
+                            <div class="client-item">
+                                <span>${c.hostname}</span>
+                                <span style="color: var(--text-muted);">${c.ip}</span>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch connected clients:', err);
+            }
+        }
+
+        // Service control
+        async function controlService(service, action) {
+            const actionText = action === 'restart' ? 'Restart' : action === 'start' ? 'Start' : 'Stop';
+            if (!confirm(`${actionText} ${service}?`)) return;
+
+            try {
+                const response = await fetch(`/api/service/${service}/${action}`, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    setTimeout(checkServiceStatus, 2000);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Failed: ' + err.message);
+            }
+        }
+
+        // Logs viewer
+        let currentLogsService = '';
+        let currentLogsLines = 50;
+
+        function showLogs(service) {
+            currentLogsService = service;
+            currentLogsLines = 50;
+            document.getElementById('logs-modal-title').textContent = service + ' Logs';
+            document.getElementById('logs-modal').classList.add('active');
+            refreshLogs();
+        }
+
+        function closeLogsModal() {
+            document.getElementById('logs-modal').classList.remove('active');
+        }
+
+        async function refreshLogs() {
+            const output = document.getElementById('logs-output');
+            output.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`/api/logs/${currentLogsService}?lines=${currentLogsLines}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    output.textContent = data.logs;
+                    output.scrollTop = output.scrollHeight;
+                } else {
+                    output.textContent = 'Error: ' + data.error;
+                }
+            } catch (err) {
+                output.textContent = 'Failed to fetch logs: ' + err.message;
+            }
+        }
+
+        function loadMoreLogs() {
+            currentLogsLines = Math.min(currentLogsLines + 50, 200);
+            refreshLogs();
+        }
+
+        // Close modal on escape or click outside
+        document.getElementById('logs-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeLogsModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeLogsModal();
+        });
+
+        // Update refreshStatus to include new functions
+        function refreshStatus() {
+            document.getElementById('rnstatus-container').textContent = 'Loading rnstatus...';
+            document.getElementById('rnsd-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
+            document.getElementById('rigctld-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
+            document.getElementById('freedvtnc2-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
+            document.getElementById('wifi-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
+            document.getElementById('dnsmasq-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
+
+            checkServiceStatus();
+            fetchRnstatus();
+            fetchConfigInfo();
+            fetchSystemHealth();
+            fetchConnectedClients();
+        }
+
+        // Initial load
+        checkServiceStatus();
+        fetchRnstatus();
+        fetchConfigInfo();
+        fetchVersions();
+        fetchSystemHealth();
+        fetchConnectedClients();
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshStatus, 30000);
+        // Health updates more frequently
+        setInterval(fetchSystemHealth, 10000);
+        setInterval(fetchConnectedClients, 15000);
+    </script>
+</body>
+</html>

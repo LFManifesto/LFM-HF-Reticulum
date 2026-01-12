@@ -1,0 +1,726 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-01-06",
+  "radios": [
+    {
+      "id": "xiegu_g90",
+      "manufacturer": "Xiegu",
+      "model": "G90",
+      "hamlib_id": 3088,
+      "baud_rate": 19200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "AGC", "value": "OFF (AGC--)", "how": "Short press [AGC] button"},
+          {"setting": "Mode", "value": "U-D (USB Digital)", "how": "Press Mode arrows until U-D"},
+          {"setting": "RF Gain", "value": "50%", "how": "Long press [AGC], use VFO knob"},
+          {"setting": "AUX IN", "value": "10", "how": "Long press [FUNC] → Menu 5"},
+          {"setting": "AUX OUT", "value": "13", "how": "Long press [FUNC] → Menu 6"}
+        ],
+        "frequency": "24.930 MHz or any clear HF frequency",
+        "cable_note": "Use Digirig Mobile with USB 2.0 port (black, not blue)"
+      },
+      "notes": "Blue USB cable uses FTDI chip. Black cables use Prolific - different driver.",
+      "tested": true,
+      "power_watts": 20
+    },
+    {
+      "id": "xiegu_g106",
+      "manufacturer": "Xiegu",
+      "model": "G106",
+      "hamlib_id": 3088,
+      "baud_rate": 19200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB", "how": "Press MODE button"},
+          {"setting": "AGC", "value": "OFF", "how": "Menu setting"},
+          {"setting": "CAT Baud", "value": "19200", "how": "Menu → CAT settings"}
+        ],
+        "note": "Similar to G90. Ensure CAT is enabled in menu."
+      },
+      "notes": "Shares backend with G90.",
+      "tested": false,
+      "power_watts": 10
+    },
+    {
+      "id": "xiegu_x6100",
+      "manufacturer": "Xiegu",
+      "model": "X6100",
+      "hamlib_id": 3087,
+      "baud_rate": 19200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB", "how": "Touch mode selector"},
+          {"setting": "AGC", "value": "OFF", "how": "Settings menu"},
+          {"setting": "CAT", "value": "Enable", "how": "Settings → CAT"}
+        ],
+        "note": "Portable SDR with touchscreen. Connect via USB-C."
+      },
+      "notes": "Portable SDR. Requires Hamlib 4.4+.",
+      "tested": false,
+      "power_watts": 5
+    },
+    {
+      "id": "icom_ic7300",
+      "manufacturer": "Icom",
+      "model": "IC-7300",
+      "hamlib_id": 3073,
+      "baud_rate": 115200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none"
+      },
+      "civ_address": "0x94",
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB-D", "how": "Press MODE, touch DATA to select USB-D"},
+          {"setting": "DATA MOD", "value": "USB", "how": "Menu → Connectors → DATA MOD"},
+          {"setting": "CI-V Baud Rate", "value": "115200", "how": "Menu → Connectors → CI-V → Baud Rate"},
+          {"setting": "CI-V USB Port", "value": "Unlink from Remote", "how": "Menu → Connectors → CI-V"},
+          {"setting": "CI-V USB Baud", "value": "115200", "how": "Menu → Connectors → CI-V (page 2)"},
+          {"setting": "Filter Width", "value": "3000 Hz", "how": "Touch BW → set to 3.0k"}
+        ],
+        "note": "Install Icom USB driver BEFORE connecting. Power on radio first, then start software.",
+        "sources": ["https://wa7ewc.wordpress.com/2016/04/27/icom-ic-7300-digital-mode-settings/", "https://k0pir.us/transmitter-settings-digital-operation/"]
+      },
+      "notes": "Most popular modern HF SDR. Set CI-V USB Port to 'Unlink from Remote' for full speed.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "icom_ic705",
+      "manufacturer": "Icom",
+      "model": "IC-705",
+      "hamlib_id": 3085,
+      "baud_rate": 115200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none"
+      },
+      "civ_address": "0xA4",
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB-D", "how": "Press MODE → USB-D"},
+          {"setting": "DATA MOD", "value": "USB", "how": "SET → Connectors → DATA MOD → USB"},
+          {"setting": "CI-V Address", "value": "A4 (default)", "how": "SET → Connectors → CI-V → Address"},
+          {"setting": "CI-V USB Echo Back", "value": "OFF (default)", "how": "SET → Connectors → CI-V"},
+          {"setting": "CI-V Baud Rate", "value": "Auto or 115200", "how": "SET → Connectors → CI-V"}
+        ],
+        "note": "Portable SDR. CI-V address is A4h (can change to 94h to mimic IC-7300). ALC should show 1-10% max.",
+        "sources": ["https://oh8stn.org/blog/2021/02/02/icom-ic-705-winlink-express-setup/", "https://sourceforge.net/p/fldigi/wiki/IC-705%20Setup/"]
+      },
+      "notes": "Portable SDR. For software lacking IC-705 support, set CI-V to 0x94 and use IC-7300 settings.",
+      "tested": false,
+      "power_watts": 10
+    },
+    {
+      "id": "icom_ic7100",
+      "manufacturer": "Icom",
+      "model": "IC-7100",
+      "hamlib_id": 3070,
+      "baud_rate": 19200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none"
+      },
+      "civ_address": "0x88",
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB-D", "how": "Touch MODE → USB-D"},
+          {"setting": "CI-V Baud Rate", "value": "19200", "how": "SET → Connectors → CI-V Baud Rate"},
+          {"setting": "CI-V Address", "value": "88h (default)", "how": "SET → Connectors → CI-V Address"},
+          {"setting": "DATA MOD", "value": "USB", "how": "SET → Connectors → DATA MOD"},
+          {"setting": "DATA OFF MOD", "value": "MIC,ACC", "how": "SET → Connectors → DATA OFF MOD (for SSB)"}
+        ],
+        "note": "Built-in USB audio and serial. PTT must use CAT command (RTS/DTR not supported). No ALC in digital modes.",
+        "sources": ["https://support.hamradiodeluxe.com/support/solutions/articles/51000083391-ic-7100-usb-configuration", "https://2e0pgs.github.io/blog/hamradio/2020/07/29/ic-7100-usb-data-mode-operation/"]
+      },
+      "notes": "All-mode/all-band with D-STAR.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "icom_ic718",
+      "manufacturer": "Icom",
+      "model": "IC-718",
+      "hamlib_id": 3013,
+      "baud_rate": 9600,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none"
+      },
+      "civ_address": "0x5E",
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB", "how": "Press USB button"},
+          {"setting": "CI-V Baud", "value": "9600", "how": "Menu → CI-V → Baud"},
+          {"setting": "CI-V Address", "value": "5E", "how": "Menu → CI-V → Address"}
+        ],
+        "note": "Entry-level HF. CAT PTT may not work - use VOX or hardware PTT if needed."
+      },
+      "notes": "Entry-level HF. May lack CAT PTT - use hardware PTT instead.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "icom_ic7200",
+      "manufacturer": "Icom",
+      "model": "IC-7200",
+      "hamlib_id": 3061,
+      "baud_rate": 19200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none"
+      },
+      "civ_address": "0x76",
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB-D", "how": "Press MODE → select USB-D"},
+          {"setting": "CI-V Baud", "value": "19200", "how": "Set mode → CI-V"},
+          {"setting": "USB MOD Level", "value": "50%", "how": "Set mode → USB MOD"}
+        ],
+        "note": "Rugged field radio. Built-in USB audio. Good for portable digital."
+      },
+      "notes": "Rugged HF for portable/field use.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "icom_ic7610",
+      "manufacturer": "Icom",
+      "model": "IC-7610",
+      "hamlib_id": 3078,
+      "baud_rate": 115200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none"
+      },
+      "civ_address": "0x98",
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB-D1", "how": "Touch SSB → USB-D1 for data mode"},
+          {"setting": "CI-V Address", "value": "98h (default)", "how": "Menu → Connectors → CI-V"},
+          {"setting": "CI-V Baud Rate", "value": "115200", "how": "Menu → Connectors → CI-V → Baud Rate"},
+          {"setting": "DATA MOD", "value": "USB", "how": "Menu → Connectors → DATA MOD"},
+          {"setting": "USB Port", "value": "USB 1 (closest to speaker)", "how": "Use USB 1 for CAT/audio"}
+        ],
+        "note": "Has 2 USB ports - use USB 1 for CAT control. Power on radio BEFORE starting software. Use USB cable with ferrite.",
+        "sources": ["https://support.hamradiodeluxe.com/support/solutions/articles/51000083466-ic-7610-usb-setup-configuration", "https://www.fbnews.jp/201712/technical_en/"]
+      },
+      "notes": "Dual-watch SDR flagship.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "yaesu_ft891",
+      "manufacturer": "Yaesu",
+      "model": "FT-891",
+      "hamlib_id": 1036,
+      "baud_rate": 38400,
+      "ptt_on_delay_ms": 300,
+      "ptt_off_delay_ms": 200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 2,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DATA-U (shows D-U)", "how": "Press MODE until DATA, display shows D-U"},
+          {"setting": "Menu 05-06 (CAT Rate)", "value": "38400", "how": "Menu → 05-06"},
+          {"setting": "Menu 05-07 (CAT TOT)", "value": "1000ms", "how": "Menu → 05-07"},
+          {"setting": "Menu 08-01 (DATA Mode)", "value": "OTHERS", "how": "Menu → 08-01 (NOT PSK)"},
+          {"setting": "Menu 08-03/04 (Disp/Shift)", "value": "1500 Hz", "how": "Menu → 08-03 and 08-04"},
+          {"setting": "Menu 08-09 (DATA IN)", "value": "REAR", "how": "Menu → 08-09"},
+          {"setting": "Menu 08-10 (DATA PTT)", "value": "RTS", "how": "Menu → 08-10"}
+        ],
+        "note": "No built-in sound card - requires external interface (Digirig/SignaLink). Must be in DATA mode (not USB) to enable DATA port.",
+        "sources": ["https://themodernham.com/ft-891-the-ultimate-digital-settings-menu-guide-for-digital-modes/", "https://www.jpole-antenna.com/2020/08/12/yaesu-ft-891-setup-for-digital-modes/"]
+      },
+      "notes": "Mobile HF. Menu 05-06 sets CAT rate. Default 4800, recommend 38400.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "yaesu_ft991",
+      "manufacturer": "Yaesu",
+      "model": "FT-991/991A",
+      "hamlib_id": 1035,
+      "baud_rate": 38400,
+      "ptt_on_delay_ms": 300,
+      "ptt_off_delay_ms": 200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 2,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DATA-USB (shows D-U)", "how": "Press MODE until DATA-USB"},
+          {"setting": "Menu 031 (CAT Rate)", "value": "38400", "how": "Menu → 031"},
+          {"setting": "Menu 062 (DATA Mode)", "value": "OTHERS", "how": "Menu → 062 (NOT PSK)"},
+          {"setting": "Menu 064/065 (Disp/Shift)", "value": "1500 Hz", "how": "Menu → 064 and 065"},
+          {"setting": "Menu 070 (DATA IN)", "value": "REAR", "how": "Menu → 070"},
+          {"setting": "Menu 071 (DATA PTT)", "value": "RTS", "how": "Menu → 071"},
+          {"setting": "Filter Width", "value": "3000 Hz", "how": "Adjust width after entering DATA mode"}
+        ],
+        "note": "Built-in USB sound card. Install Silicon Labs driver. Both COM ports show as 'enhanced' and 'standard' - use enhanced for CAT.",
+        "sources": ["https://www.n1rwy.org/?p=157/", "https://www.qsl.net/cm-arc/Yaesu%20FT991A%20Digital.pdf"]
+      },
+      "notes": "All-in-one HF/VHF/UHF. Menu 28: Set serial port to RS232C (CAT).",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "yaesu_ft817",
+      "manufacturer": "Yaesu",
+      "model": "FT-817",
+      "hamlib_id": 1020,
+      "baud_rate": 9600,
+      "ptt_on_delay_ms": 350,
+      "ptt_off_delay_ms": 250,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 2,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DIG", "how": "Press MODE until DIG shows"},
+          {"setting": "Menu 26 (DIG Mode)", "value": "USER-U", "how": "Menu → 26"},
+          {"setting": "Menu 14 (CAT Rate)", "value": "9600", "how": "Menu → 14 (or 4800/38400)"},
+          {"setting": "Menu 40 (PKT Rate)", "value": "1200", "how": "Menu → 40"}
+        ],
+        "note": "QRP legend. Use DIG mode (not USB). Connect to DATA port (6-pin mini-DIN). External audio interface required.",
+        "sources": ["https://km1ndy.com/yaesu-818-digital-modes-wsjt-x-digirig-setup/", "https://oh8stn.org/blog/2018/02/01/yaesu-ft817-data-mode-settings/"]
+      },
+      "notes": "QRP legend. PKT rate in menu must be 1200 for some digital modes.",
+      "tested": false,
+      "power_watts": 5
+    },
+    {
+      "id": "yaesu_ft818",
+      "manufacturer": "Yaesu",
+      "model": "FT-818",
+      "hamlib_id": 1041,
+      "baud_rate": 9600,
+      "ptt_on_delay_ms": 350,
+      "ptt_off_delay_ms": 250,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 2,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DIG-U", "how": "Press MODE until DIG"},
+          {"setting": "Menu 14 (DIG Mode)", "value": "USER-U", "how": "Menu → 14"},
+          {"setting": "Menu 26 (CAT Rate)", "value": "9600", "how": "Menu → 26"},
+          {"setting": "Menu 62 (CAT/Linear)", "value": "CAT", "how": "Menu → 62"}
+        ],
+        "note": "FT-817 successor. Same settings. Connect to DATA port for audio."
+      },
+      "notes": "FT-817 successor. Same settings.",
+      "tested": false,
+      "power_watts": 6
+    },
+    {
+      "id": "yaesu_ft857",
+      "manufacturer": "Yaesu",
+      "model": "FT-857",
+      "hamlib_id": 1022,
+      "baud_rate": 9600,
+      "ptt_on_delay_ms": 300,
+      "ptt_off_delay_ms": 200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 2,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DIG-U", "how": "Press MODE until DIG"},
+          {"setting": "Menu 19 (CAT Rate)", "value": "9600", "how": "Menu → 19"},
+          {"setting": "Menu 20 (CAT/Linear)", "value": "CAT", "how": "Menu → 20"},
+          {"setting": "Menu 59 (DIG Mode)", "value": "USER-U", "how": "Menu → 59"}
+        ],
+        "note": "All-band mobile. Similar to FT-817. Use DATA connector for audio."
+      },
+      "notes": "Menu 19: CAT RATE. Menu 20: Set to CAT.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "yaesu_ft897",
+      "manufacturer": "Yaesu",
+      "model": "FT-897",
+      "hamlib_id": 1023,
+      "baud_rate": 9600,
+      "ptt_on_delay_ms": 300,
+      "ptt_off_delay_ms": 200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 2,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DIG-U", "how": "Press MODE until DIG"},
+          {"setting": "Menu 19 (CAT Rate)", "value": "9600", "how": "Menu → 19"},
+          {"setting": "Menu 20 (CAT/Linear)", "value": "CAT", "how": "Menu → 20"},
+          {"setting": "Menu 59 (DIG Mode)", "value": "USER-U", "how": "Menu → 59"}
+        ],
+        "note": "All-band portable/base. Same settings as FT-857. Built-in battery option."
+      },
+      "notes": "Menu 19: CAT RATE. Menu 20: Set to CAT.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "kenwood_ts590",
+      "manufacturer": "Kenwood",
+      "model": "TS-590SG",
+      "hamlib_id": 2037,
+      "baud_rate": 115200,
+      "ptt_on_delay_ms": 250,
+      "ptt_off_delay_ms": 150,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB-DATA", "how": "Press MODE → USB, then press DATA key"},
+          {"setting": "Menu 68 (USB Baud)", "value": "115200", "how": "Menu 68"},
+          {"setting": "Menu 69 (USB Line)", "value": "USB", "how": "Menu 69 (select USB for CAT)"},
+          {"setting": "Menu 71 (TX Audio)", "value": "1", "how": "Menu 71 (start low, adjust up)"},
+          {"setting": "Menu 72 (RX Audio)", "value": "5-7", "how": "Menu 72 (adjust for band)"},
+          {"setting": "Menu 29 (Data Filter)", "value": "2", "how": "Menu 29 (width+center mode)"}
+        ],
+        "note": "Built-in USB audio. Power off/on after changing baud rate. Use USB-DATA mode (not plain USB).",
+        "sources": ["https://sites.google.com/view/kc2rgw/home/kenwood-ts-590sg-digital-mode-setup", "https://www.kenwood.com/i/products/info/amateur/ts_590g/pdf/ts590_g_ft8_settings_en.pdf"]
+      },
+      "notes": "Best current Kenwood HF. Menu 67 (COM), Menu 68 (USB).",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "kenwood_ts480",
+      "manufacturer": "Kenwood",
+      "model": "TS-480",
+      "hamlib_id": 2028,
+      "baud_rate": 9600,
+      "ptt_on_delay_ms": 300,
+      "ptt_off_delay_ms": 200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 2,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB", "how": "Press MODE"},
+          {"setting": "Menu 56 (Baud Rate)", "value": "9600", "how": "Menu 56"},
+          {"setting": "Menu 57 (Data VOX)", "value": "OFF", "how": "Menu 57 (use CAT PTT)"}
+        ],
+        "note": "Mobile/base transceiver. Use ACC2 connector for digital audio."
+      },
+      "notes": "Requires explicit -s 9600 flag. 2 stop bits recommended.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "kenwood_ts2000",
+      "manufacturer": "Kenwood",
+      "model": "TS-2000",
+      "hamlib_id": 2014,
+      "baud_rate": 9600,
+      "ptt_on_delay_ms": 300,
+      "ptt_off_delay_ms": 200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB", "how": "Press MODE → USB"},
+          {"setting": "Menu 56 (Baud Rate)", "value": "9600", "how": "Menu 56"},
+          {"setting": "Menu 57 (Data VOX)", "value": "OFF", "how": "Menu 57"}
+        ],
+        "note": "All-band including satellite. Use DATA connector for audio."
+      },
+      "notes": "All-band including satellite. Menu 56 controls baud.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "elecraft_kx3",
+      "manufacturer": "Elecraft",
+      "model": "KX3",
+      "hamlib_id": 2045,
+      "baud_rate": 38400,
+      "ptt_on_delay_ms": 250,
+      "ptt_off_delay_ms": 150,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DATA A", "how": "Tap MODE until DATA A"},
+          {"setting": "CONFIG:RS232", "value": "38400", "how": "Hold MENU → RS232"},
+          {"setting": "MIC Gain", "value": "Mid-range", "how": "Adjust during TX for 4-5 ALC bars"},
+          {"setting": "Power", "value": "Set desired", "how": "Use POWER knob (not audio level)"}
+        ],
+        "note": "Elecraft power control is different - set audio for 4-5 ALC bars, then adjust power with POWER knob. Do NOT use audio to control power.",
+        "sources": ["https://www.qsoshack.com/data-mode-communication-on-the-elecraft-kx3/", "http://www.w3fpr.com/download_files/Digital%20modes.pdf"]
+      },
+      "notes": "Portable. Wait 500ms after band change before setting mode.",
+      "tested": false,
+      "power_watts": 15
+    },
+    {
+      "id": "elecraft_kx2",
+      "manufacturer": "Elecraft",
+      "model": "KX2",
+      "hamlib_id": 2044,
+      "baud_rate": 38400,
+      "ptt_on_delay_ms": 250,
+      "ptt_off_delay_ms": 150,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DATA A", "how": "Tap MODE until DATA A"},
+          {"setting": "CONFIG:RS232", "value": "38400", "how": "Hold MENU → RS232 (or 9600)"},
+          {"setting": "MIC Gain", "value": "Mid-range", "how": "Adjust during TX for 4-5 ALC bars"},
+          {"setting": "Power", "value": "Set desired", "how": "Use POWER knob (not audio level)"}
+        ],
+        "note": "Same as KX3. Uses MIC input (not LINE IN). Set audio for 4-5 ALC bars, control power with POWER knob.",
+        "sources": ["https://k0pir.us/elecraft-kx2-and-wsjt-x-easy-setup/", "http://www.w3fpr.com/download_files/Digital%20modes.pdf"]
+      },
+      "notes": "Ultra-portable. Same protocol as KX3.",
+      "tested": false,
+      "power_watts": 12
+    },
+    {
+      "id": "elecraft_k3",
+      "manufacturer": "Elecraft",
+      "model": "K3/K3S",
+      "hamlib_id": 2029,
+      "baud_rate": 38400,
+      "ptt_on_delay_ms": 250,
+      "ptt_off_delay_ms": 150,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DATA A", "how": "Tap MD until DATA A"},
+          {"setting": "CONFIG:RS232", "value": "38400 (3)", "how": "CONFIG → RS232 → 3"},
+          {"setting": "CONFIG:PTT-KEY", "value": "RTS or DTR", "how": "Set to match software PTT setting"},
+          {"setting": "MIC Gain (data)", "value": "Mid-range", "how": "Adjust for 4 bars + flicker on ALC"}
+        ],
+        "note": "Use DATA A mode. Set audio for 4+ ALC bars (below 5 = audio level, above 5 = ALC limiting). Control power with POWER knob.",
+        "sources": ["https://vk2rh.com/k3-and-digital-modes/", "http://www.bigskyspaces.com/w7gj/K3andJT65.pdf"]
+      },
+      "notes": "CONFIG:RS232 menu. 0=4800, 1=9600, 2=19200, 3=38400.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "elecraft_k4",
+      "manufacturer": "Elecraft",
+      "model": "K4",
+      "hamlib_id": 2047,
+      "baud_rate": 38400,
+      "ptt_on_delay_ms": 200,
+      "ptt_off_delay_ms": 150,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "DATA A", "how": "Tap MODE until DATA A"},
+          {"setting": "Serial Baud", "value": "38400", "how": "Menu → Serial → Baud Rate"},
+          {"setting": "DATA A IN", "value": "USB Audio", "how": "Menu → DATA A → Input"},
+          {"setting": "USB Audio Out", "value": "50%", "how": "Menu → USB Audio Level"}
+        ],
+        "note": "Latest Elecraft flagship. Built-in USB audio. Excellent for digital modes."
+      },
+      "notes": "Latest flagship. Full Kenwood-compatible protocol.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
+      "id": "qrplabs_qdx",
+      "manufacturer": "QRP Labs",
+      "model": "QDX",
+      "hamlib_id": 2052,
+      "baud_rate": 9600,
+      "ptt_on_delay_ms": 200,
+      "ptt_off_delay_ms": 150,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB (fixed)", "how": "QDX is USB-only, no mode change needed"},
+          {"setting": "PTT Method", "value": "CAT (not VOX)", "how": "In WSJT-X: Settings → Radio → PTT → CAT"},
+          {"setting": "Rig Selection", "value": "Kenwood TS-440S", "how": "In WSJT-X (uses TS-440 protocol)"},
+          {"setting": "Sound Card", "value": "QRP Labs QDX Transceiver", "how": "Select in audio settings"}
+        ],
+        "note": "All-in-one digital radio. Single USB for CAT + audio. Emulates Kenwood TS-440. Use CAT for PTT (not VOX).",
+        "sources": ["https://qrp-labs.com/qdx.html", "https://qrp-labs.com/images/qdx/manual_operation_1_10.pdf"]
+      },
+      "notes": "QRP digital kit. TS-440 emulation. Select 'Kenwood TS-440S' in software lacking QDX support.",
+      "tested": false,
+      "power_watts": 5
+    },
+    {
+      "id": "trusdx",
+      "manufacturer": "DL2MAN",
+      "model": "(tr)uSDX",
+      "hamlib_id": 2028,
+      "baud_rate": 115200,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "dtr_state": "ON",
+        "rts_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB", "how": "Select USB mode"},
+          {"setting": "Rig Selection", "value": "Kenwood TS-480", "how": "In software (uses TS-480 protocol)"},
+          {"setting": "Baud Rate", "value": "115200 (fw 2.00+)", "how": "38400 for older firmware"},
+          {"setting": "DTR", "value": "HIGH", "how": "Required for CAT"},
+          {"setting": "RTS", "value": "LOW (RX) / HIGH (TX)", "how": "For CW/PTT keying"}
+        ],
+        "note": "Emulates Kenwood TS-480. Firmware 2.00u+ supports CAT audio streaming (no sound card needed). External audio interface required for older firmware.",
+        "sources": ["https://dl2man.de/4-trusdx-manual/", "https://oh8stn.org/blog/2023/03/24/qrp-nvis-data-modes-go-kit-trusdx/"]
+      },
+      "notes": "QRP kit. TS-480 emulation. Firmware 2.00+ requires 115200. Older firmware uses 38400. External audio interface required for freedvtnc2.",
+      "tested": false,
+      "power_watts": 5,
+      "requires_external_audio": true
+    },
+    {
+      "id": "ubitx",
+      "manufacturer": "HF Signals",
+      "model": "uBITX",
+      "hamlib_id": 1020,
+      "baud_rate": 38400,
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 2,
+        "parity": "none",
+        "handshake": "none"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB", "how": "Mode selector (depends on firmware)"},
+          {"setting": "Rig Selection", "value": "Yaesu FT-817", "how": "In software (or FT-857)"},
+          {"setting": "Baud Rate", "value": "38400", "how": "8N2 (2 stop bits)"},
+          {"setting": "PTT Method", "value": "CAT", "how": "In software settings"}
+        ],
+        "note": "Emulates FT-817/FT-857. KD8CEC firmware recommended. External audio interface required. Connect headphone out → mic in, radio audio → PC mic.",
+        "sources": ["https://ubitx.net/category/digital-modes/", "http://www.hamskey.com/2018/01/wjst-x-configuration-for-ubitx.html"]
+      },
+      "notes": "QRP kit. FT-817 emulation. Use Yaesu FT-817 settings.",
+      "tested": false,
+      "power_watts": 10
+    }
+  ]
+}
