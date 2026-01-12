@@ -1,0 +1,17 @@
+[Unit]
+Description=ReticulumHF RNS Daemon
+Documentation=https://markqvist.github.io/Reticulum/manual/
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+Environment="PATH=/home/pi/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/pi/.local/bin/rnsd -v
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

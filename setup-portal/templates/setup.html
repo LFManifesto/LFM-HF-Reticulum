@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReticulumHF Setup</title>
+    <style>
+        :root {
+            /* Light Fighter Manifesto colors */
+            --bg: #0a0a0a;
+            --bg-secondary: #111111;
+            --surface: #141414;
+            --surface-hover: #1c1c1c;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-secondary: #b8b8b8;
+            --text-muted: #888888;
+            --accent: #c92a2a;
+            --accent-hover: #e03131;
+            --success: #4ade80;
+            --error: #c92a2a;
+            --warning: #fbbf24;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 600px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 { font-size: 1.8rem; margin-bottom: 5px; }
+
+        .system-info {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+        }
+
+        .system-info span { color: var(--text-muted); }
+
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .step-number {
+            background: var(--accent);
+            color: #000;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .card-title { font-size: 1.1rem; font-weight: 600; }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        select, input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: var(--surface-hover); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #2a2a2a; }
+        .btn-success { background: var(--accent); color: #fff; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+
+        .status-success { background: rgba(74, 222, 128, 0.15); color: var(--success); }
+        .status-error { background: rgba(248, 113, 113, 0.15); color: var(--error); }
+        .status-pending { background: rgba(74, 158, 255, 0.15); color: var(--accent); }
+
+        .detected-hardware {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+        }
+
+        .hw-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hw-item:last-child { border-bottom: none; }
+        .hw-label { color: var(--text-muted); }
+        .hw-value { font-family: monospace; }
+
+        .checkbox-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 12px 0;
+            padding: 10px;
+            background: var(--bg);
+            border-radius: 6px;
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            width: auto;
+            margin: 3px 0 0 0;
+            flex-shrink: 0;
+        }
+
+        .checkbox-row label {
+            margin: 0;
+            color: var(--text);
+        }
+
+        .checkbox-row .peer-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .note {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+
+        .hidden { display: none; }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        footer a { color: var(--accent); text-decoration: none; }
+
+        /* Radio settings table */
+        .settings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+
+        .settings-table th, .settings-table td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-table th {
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
+        .settings-table td:nth-child(2) {
+            font-family: monospace;
+            color: var(--accent);
+        }
+
+        .radio-guide {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .radio-guide h4 {
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+
+        .confirm-checkbox {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .section-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 15px 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ReticulumHF Gateway Setup</h1>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 5px;">
+                Configure your Pi as a Reticulum gateway for HF radio
+            </p>
+        </header>
+
+        <div class="system-info">
+            <span>System:</span> {{ system_info.pi_model or system_info.os }}
+            | <span>Kernel:</span> {{ system_info.kernel }}
+        </div>
+
+        <!-- Step 1: Radio Selection -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-number">1</div>
+                <div class="card-title">Select Your Radio</div>
+            </div>
+
+            <label for="radio-select">Radio Model</label>
+            <select id="radio-select">
+                <option value="">-- Select Radio --</option>
+                {% for mfr, radios in manufacturers.items() %}
+                <optgroup label="{{ mfr }}">
+                    {% for radio in radios %}
+                    <option value="{{ radio.id }}"
+                            data-hamlib="{{ radio.hamlib_id }}"
+                            data-baud="{{ radio.baud_rate }}">
+                        {{ radio.model }}
+                    </option>
+                    {% endfor %}
+                </optgroup>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Step 2: Radio Setup Guide -->
+        <div class="card" id="radio-guide-card">
+            <div class="card-header">
+                <div class="step-number">2</div>
+                <div class="card-title">Configure Your Radio</div>
+            </div>
+
+            <div id="radio-guide-content">
+                <p style="color: var(--text-muted);">Select a radio above to see the required settings.</p>
+            </div>
+
+            <div id="radio-confirm" class="confirm-checkbox hidden">
+                <div class="checkbox-row" style="background: transparent; padding: 0;">
+                    <input type="checkbox" id="radio-configured">
+                    <label for="radio-configured">I have configured my radio with these settings</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: FreeDV Mode Selection -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-number">3</div>
+                <div class="card-title">FreeDV Mode</div>
+            </div>
+
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
+                Select the data mode based on your propagation conditions.
+            </p>
+
+            <label for="freedv-mode">Data Mode</label>
+            <select id="freedv-mode">
+                <option value="DATAC1" selected>DATAC1 - Standard (980 bps, good conditions)</option>
+                <option value="DATAC3">DATAC3 - Robust (321 bps, moderate conditions)</option>
+                <option value="DATAC4">DATAC4 - Very Robust (87 bps, poor conditions)</option>
+            </select>
+
+            <div class="note" id="mode-description">
+                <strong>DATAC1:</strong> Best throughput for clear HF paths. Requires ~5 dB SNR. Use 1700 Hz bandwidth.
+            </div>
+        </div>
+
+        <!-- Step 4: Hardware Detection -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-number">4</div>
+                <div class="card-title">Hardware Detection</div>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-secondary" id="detect-btn" onclick="detectHardware()">
+                    Detect Hardware
+                </button>
+            </div>
+
+            <div id="hardware-results" class="detected-hardware hidden">
+                <div class="hw-item">
+                    <span class="hw-label">Serial Port</span>
+                    <span class="hw-value" id="hw-serial">--</span>
+                </div>
+                <div class="hw-item">
+                    <span class="hw-label">Audio Device</span>
+                    <span class="hw-value" id="hw-audio">--</span>
+                </div>
+                <div class="hw-item">
+                    <span class="hw-label">Digirig</span>
+                    <span class="hw-value" id="hw-digirig">--</span>
+                </div>
+            </div>
+
+            <div id="manual-config" class="hidden" style="margin-top: 15px;">
+                <label for="serial-port">Serial Port</label>
+                <select id="serial-port">
+                    <option value="">-- Detect or select --</option>
+                </select>
+
+                <label for="audio-card">Audio Device</label>
+                <select id="audio-card">
+                    <option value="">-- Detect or select --</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Step 5: Test Connection -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-number">5</div>
+                <div class="card-title">Test Connection</div>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-secondary" id="test-cat-btn" onclick="testCAT()" disabled>
+                    Test CAT
+                </button>
+                <button class="btn btn-secondary" id="test-ptt-btn" onclick="testPTT()" disabled>
+                    Test PTT
+                </button>
+                <button class="btn btn-secondary" id="set-audio-btn" onclick="setAudio()" disabled>
+                    Set Audio Levels
+                </button>
+            </div>
+
+            <div id="test-status" class="hidden"></div>
+        </div>
+
+        <!-- Step 6: Field WiFi (Optional) -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-number">6</div>
+                <div class="card-title">Field WiFi (Optional)</div>
+            </div>
+
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
+                Change the WiFi network name for field operations. Leave empty to keep the current network name.
+            </p>
+
+            <label for="wifi-ssid">New WiFi Network Name (leave empty to keep current)</label>
+            <input type="text" id="wifi-ssid" value="" placeholder="Leave empty to keep 'ReticulumHF-Setup'" maxlength="32">
+            <div id="wifi-ssid-error" class="note hidden" style="color: var(--error); border-left: 3px solid var(--error);"></div>
+
+            <label for="wifi-password">WiFi Password (8-63 characters)</label>
+            <input type="password" id="wifi-password" value="" placeholder="Leave empty to keep current password" maxlength="63">
+            <div id="wifi-password-error" class="note hidden" style="color: var(--error); border-left: 3px solid var(--error);"></div>
+
+            <div class="note" style="border-left: 3px solid var(--warning);">
+                <strong style="color: var(--warning);">Warning:</strong> If you change the network name, you will need to reconnect your devices to the new network after setup completes.
+            </div>
+        </div>
+
+        <!-- Step 7: Gateway Security (Optional) -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-number">7</div>
+                <div class="card-title">Gateway Security (Optional)</div>
+            </div>
+
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
+                IFAC (Interface Access Codes) encrypts and authenticates the gateway connection.
+            </p>
+
+            <label for="ifac-name">Network Name</label>
+            <input type="text" id="ifac-name" placeholder="e.g., MyNetwork">
+
+            <label for="ifac-pass">Passphrase</label>
+            <input type="password" id="ifac-pass" placeholder="Leave empty for no authentication">
+
+            <div class="note">
+                If set, Sideband must use the same Network Name and Passphrase in its TCP interface settings.
+            </div>
+        </div>
+
+        <!-- Step 9: Complete Setup -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-number">9</div>
+                <div class="card-title">Complete Setup</div>
+            </div>
+
+            <button class="btn btn-success" id="complete-btn" onclick="completeSetup()" disabled style="width: 100%;">
+                Start Gateway
+            </button>
+
+            <div id="complete-status" class="hidden"></div>
+        </div>
+
+        <footer>
+            <p>ReticulumHF by <a href="https://lightfightermanifesto.org" target="_blank">Light Fighter Manifesto</a></p>
+        </footer>
+    </div>
+
+    <script>
+        let detectedHardware = null;
+        let radioData = {};  // Will be populated from API
+
+        // Fetch radio data including setup guides from API
+        async function loadRadioData() {
+            try {
+                const response = await fetch('/api/radios');
+                const radios = await response.json();
+                radios.forEach(radio => {
+                    radioData[radio.id] = radio;
+                });
+            } catch (err) {
+                console.error('Failed to load radio data:', err);
+            }
+        }
+
+        // Load radio data on page load
+        loadRadioData();
+
+        // FreeDV mode descriptions
+        const modeDescriptions = {
+            'DATAC1': '<strong>DATAC1:</strong> Best throughput for clear HF paths. Requires ~5 dB SNR. Uses 1700 Hz bandwidth.',
+            'DATAC3': '<strong>DATAC3:</strong> Balanced mode for moderate conditions. Requires ~0 dB SNR. Uses 500 Hz bandwidth.',
+            'DATAC4': '<strong>DATAC4:</strong> Most robust mode for poor conditions. Works at -4 dB SNR. Uses 250 Hz bandwidth.'
+        };
+
+        // Update mode description when selection changes
+        document.getElementById('freedv-mode').addEventListener('change', function() {
+            document.getElementById('mode-description').innerHTML = modeDescriptions[this.value] || '';
+        });
+
+        // WiFi validation
+        function validateWiFi() {
+            const ssid = document.getElementById('wifi-ssid').value;
+            const password = document.getElementById('wifi-password').value;
+            const ssidError = document.getElementById('wifi-ssid-error');
+            const passwordError = document.getElementById('wifi-password-error');
+            let valid = true;
+
+            // Validate SSID (empty is OK - means keep current)
+            if (ssid.length > 32) {
+                ssidError.textContent = 'SSID must be 32 characters or less';
+                ssidError.classList.remove('hidden');
+                valid = false;
+            } else if (ssid.length > 0 && ssid.length < 1) {
+                ssidError.textContent = 'SSID must be at least 1 character';
+                ssidError.classList.remove('hidden');
+                valid = false;
+            } else {
+                ssidError.classList.add('hidden');
+            }
+
+            // Validate password (empty is OK if SSID is also empty - keeps current)
+            // If SSID is provided, password must be 8-63 chars or empty for open network
+            if (password.length > 0 && (password.length < 8 || password.length > 63)) {
+                passwordError.textContent = 'Password must be 8-63 characters (WPA2 requirement)';
+                passwordError.classList.remove('hidden');
+                valid = false;
+            } else {
+                passwordError.classList.add('hidden');
+            }
+
+            return valid;
+        }
+
+        document.getElementById('wifi-ssid').addEventListener('input', validateWiFi);
+        document.getElementById('wifi-password').addEventListener('input', validateWiFi);
+
+        // Update radio guide when selection changes
+        document.getElementById('radio-select').addEventListener('change', function() {
+            const radioId = this.value;
+            const guideContent = document.getElementById('radio-guide-content');
+            const confirmDiv = document.getElementById('radio-confirm');
+            const confirmCheckbox = document.getElementById('radio-configured');
+
+            if (radioId && radioData[radioId] && radioData[radioId].setup_guide) {
+                const radio = radioData[radioId];
+                const guide = radio.setup_guide;
+                let html = `<div class="radio-guide">`;
+                html += `<h4>${radio.manufacturer} ${radio.model} Settings</h4>`;
+                html += `<table class="settings-table">`;
+                html += `<tr><th>Setting</th><th>Value</th><th>How to Set</th></tr>`;
+                guide.steps.forEach(s => {
+                    html += `<tr><td>${s.setting}</td><td>${s.value}</td><td>${s.how}</td></tr>`;
+                });
+                html += `</table>`;
+                if (guide.note) {
+                    html += `<div class="note">${guide.note}</div>`;
+                }
+                html += `</div>`;
+                guideContent.innerHTML = html;
+                confirmDiv.classList.remove('hidden');
+                confirmCheckbox.checked = false;
+            } else if (radioId) {
+                // Fallback for radios without detailed guides
+                guideContent.innerHTML = `<div class="radio-guide">
+                    <h4>General Digital Mode Setup</h4>
+                    <table class="settings-table">
+                        <tr><th>Setting</th><th>Value</th><th>How to Set</th></tr>
+                        <tr><td>Mode</td><td>USB or USB-D</td><td>Select digital/data USB mode</td></tr>
+                        <tr><td>CAT Control</td><td>Enable</td><td>Enable in radio menu</td></tr>
+                        <tr><td>Audio</td><td>Flat/Data</td><td>Disable DSP processing</td></tr>
+                    </table>
+                    <div class="note">Refer to your radio's manual for specific menu locations.</div>
+                </div>`;
+                confirmDiv.classList.remove('hidden');
+                confirmCheckbox.checked = false;
+            } else {
+                guideContent.innerHTML = `<p style="color: var(--text-muted);">Select a radio above to see the required settings.</p>`;
+                confirmDiv.classList.add('hidden');
+            }
+            updateTestButtons();
+        });
+
+        // Listen for confirm checkbox
+        document.getElementById('radio-configured').addEventListener('change', updateTestButtons);
+
+        async function detectHardware() {
+            const btn = document.getElementById('detect-btn');
+            btn.innerHTML = '<span class="loading"></span> Detecting...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/detect-hardware');
+                const data = await response.json();
+                detectedHardware = data;
+
+                const resultsDiv = document.getElementById('hardware-results');
+                resultsDiv.classList.remove('hidden');
+
+                // Check if any hardware was found
+                const hasSerial = data.serial_ports.length > 0;
+                const hasAudio = data.audio_devices.length > 0;
+                const hasDigirig = data.digirig.found;
+
+                document.getElementById('hw-serial').textContent =
+                    data.recommended.serial_port || 'Not found';
+                document.getElementById('hw-audio').textContent =
+                    data.recommended.audio_card !== null ? `Card ${data.recommended.audio_card}` : 'Not found';
+
+                // Show detailed Digirig status message
+                const digirigEl = document.getElementById('hw-digirig');
+                if (data.digirig.message) {
+                    digirigEl.textContent = data.digirig.message;
+                    // Color code based on status
+                    if (data.digirig.status === 'full') {
+                        digirigEl.style.color = 'var(--success)';
+                    } else if (data.digirig.status === 'audio_only' || data.digirig.status === 'serial_only') {
+                        digirigEl.style.color = 'var(--warning)';
+                    } else {
+                        digirigEl.style.color = 'var(--error)';
+                    }
+                } else {
+                    digirigEl.textContent = hasDigirig ? 'Detected' : 'Not found';
+                }
+
+                // Show guidance if no hardware found
+                if (!hasSerial && !hasAudio) {
+                    let noHwDiv = document.getElementById('no-hardware-help');
+                    if (!noHwDiv) {
+                        noHwDiv = document.createElement('div');
+                        noHwDiv.id = 'no-hardware-help';
+                        noHwDiv.className = 'note';
+                        noHwDiv.style.marginTop = '15px';
+                        noHwDiv.style.borderLeft = '3px solid var(--warning)';
+                        resultsDiv.parentNode.insertBefore(noHwDiv, resultsDiv.nextSibling);
+                    }
+                    noHwDiv.innerHTML = `
+                        <strong style="color: var(--warning);">No hardware detected</strong><br><br>
+                        <strong>Check connections:</strong>
+                        <ul style="margin: 8px 0 8px 20px; padding: 0;">
+                            <li>Ensure Digirig (or audio interface) is connected via USB</li>
+                            <li>Use a <strong>USB 2.0 port</strong> (black) - USB 3.0 can cause RF interference</li>
+                            <li>Verify the radio is powered on</li>
+                            <li>Try a different USB cable</li>
+                        </ul>
+                        <strong>After connecting:</strong> Click "Detect Hardware" again.
+                    `;
+                } else {
+                    // Remove the help div if hardware is now found
+                    const existingHelp = document.getElementById('no-hardware-help');
+                    if (existingHelp) existingHelp.remove();
+                }
+
+                const serialSelect = document.getElementById('serial-port');
+                serialSelect.innerHTML = '<option value="">-- Select --</option>';
+                data.serial_ports.forEach(port => {
+                    const opt = document.createElement('option');
+                    opt.value = port.port;
+                    opt.textContent = `${port.port} (${port.description})`;
+                    if (port.port === data.recommended.serial_port) opt.selected = true;
+                    serialSelect.appendChild(opt);
+                });
+
+                const audioSelect = document.getElementById('audio-card');
+                audioSelect.innerHTML = '<option value="">-- Select --</option>';
+                data.audio_devices.forEach(dev => {
+                    const opt = document.createElement('option');
+                    opt.value = dev.card;
+                    opt.textContent = `Card ${dev.card}: ${dev.description}`;
+                    if (dev.card === data.recommended.audio_card) opt.selected = true;
+                    audioSelect.appendChild(opt);
+                });
+
+                document.getElementById('manual-config').classList.remove('hidden');
+                updateTestButtons();
+
+            } catch (err) {
+                showStatus('hardware-results', 'error', 'Detection failed: ' + err.message);
+            } finally {
+                btn.innerHTML = 'Detect Hardware';
+                btn.disabled = false;
+            }
+        }
+
+        function updateTestButtons() {
+            const radioSelected = document.getElementById('radio-select').value;
+            const radioConfigured = document.getElementById('radio-configured').checked;
+            const serialPort = document.getElementById('serial-port').value ||
+                              (detectedHardware?.recommended.serial_port);
+            const audioCard = document.getElementById('audio-card').value ||
+                             detectedHardware?.recommended.audio_card;
+
+            const canTest = radioSelected && serialPort && radioConfigured;
+            document.getElementById('test-cat-btn').disabled = !canTest;
+            document.getElementById('test-ptt-btn').disabled = !canTest;
+            document.getElementById('set-audio-btn').disabled = audioCard === null && audioCard === '';
+            document.getElementById('complete-btn').disabled = !canTest || audioCard === null;
+        }
+
+        async function testCAT() {
+            const btn = document.getElementById('test-cat-btn');
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            btn.disabled = true;
+
+            const radioId = document.getElementById('radio-select').value;
+            const port = document.getElementById('serial-port').value ||
+                        detectedHardware?.recommended.serial_port;
+
+            try {
+                const response = await fetch('/api/test-cat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({radio_id: radioId, port: port})
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('test-status', 'success', data.message);
+                } else {
+                    showStatus('test-status', 'error', data.error);
+                }
+            } catch (err) {
+                showStatus('test-status', 'error', 'Test failed: ' + err.message);
+            } finally {
+                btn.innerHTML = 'Test CAT';
+                btn.disabled = false;
+            }
+        }
+
+        async function testPTT() {
+            const btn = document.getElementById('test-ptt-btn');
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            btn.disabled = true;
+
+            const radioId = document.getElementById('radio-select').value;
+            const port = document.getElementById('serial-port').value ||
+                        detectedHardware?.recommended.serial_port;
+
+            try {
+                const response = await fetch('/api/test-ptt', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({radio_id: radioId, port: port})
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('test-status', 'success', data.message);
+                } else {
+                    showStatus('test-status', 'error', data.error);
+                }
+            } catch (err) {
+                showStatus('test-status', 'error', 'Test failed: ' + err.message);
+            } finally {
+                btn.innerHTML = 'Test PTT';
+                btn.disabled = false;
+            }
+        }
+
+        async function setAudio() {
+            const btn = document.getElementById('set-audio-btn');
+            btn.innerHTML = '<span class="loading"></span> Setting...';
+            btn.disabled = true;
+
+            const card = document.getElementById('audio-card').value ||
+                        detectedHardware?.recommended.audio_card;
+
+            try {
+                const response = await fetch('/api/set-audio', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({card: parseInt(card), speaker: 64, mic: 75})
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('test-status', 'success', data.message);
+                } else {
+                    showStatus('test-status', 'error', data.error);
+                }
+            } catch (err) {
+                showStatus('test-status', 'error', 'Failed: ' + err.message);
+            } finally {
+                btn.innerHTML = 'Set Audio Levels';
+                btn.disabled = false;
+            }
+        }
+
+        async function completeSetup() {
+            // Validate WiFi settings first
+            if (!validateWiFi()) {
+                showStatus('complete-status', 'error', 'Please fix WiFi configuration errors');
+                return;
+            }
+
+            const btn = document.getElementById('complete-btn');
+            btn.innerHTML = '<span class="loading"></span> Starting Gateway...';
+            btn.disabled = true;
+
+            // Build peer list based on checkboxes
+            // I2P disabled - HF radio only
+            const peers = {};
+
+            // Get WiFi settings (empty means keep current)
+            const wifiSsid = document.getElementById('wifi-ssid').value.trim();
+            const wifiPassword = document.getElementById('wifi-password').value;
+
+            // Get IFAC security settings
+            const ifacName = document.getElementById('ifac-name').value || '';
+            const ifacPass = document.getElementById('ifac-pass').value || '';
+
+            // Get FreeDV mode
+            const freedvMode = document.getElementById('freedv-mode').value || 'DATAC1';
+
+            const config = {
+                radio_id: document.getElementById('radio-select').value,
+                serial_port: document.getElementById('serial-port').value ||
+                            detectedHardware?.recommended.serial_port,
+                audio_card: parseInt(document.getElementById('audio-card').value ||
+                           detectedHardware?.recommended.audio_card),
+                peers: peers,
+                ifac_name: ifacName,
+                ifac_pass: ifacPass,
+                freedv_mode: freedvMode
+            };
+
+            // Only include WiFi settings if user provided them (empty = keep current)
+            if (wifiSsid) {
+                config.wifi_ssid = wifiSsid;
+            }
+            if (wifiPassword) {
+                config.wifi_password = wifiPassword;
+            }
+
+            try {
+                const response = await fetch('/api/complete-setup', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    let message = 'Gateway ready!';
+                    if (data.wifi_changed && data.wifi_ssid) {
+                        message = `Gateway ready! WiFi changed to: <strong>${data.wifi_ssid}</strong><br>Reconnect to the new network.`;
+                    } else if (data.wifi_ssid) {
+                        message = `Gateway ready! Connect Sideband to WiFi: <strong>${data.wifi_ssid}</strong>`;
+                    }
+                    showStatus('complete-status', 'success', message);
+                    btn.innerHTML = 'Gateway Started';
+                    setTimeout(() => { window.location.href = '/status'; }, 3000);
+                } else {
+                    showStatus('complete-status', 'error', data.error);
+                    btn.innerHTML = 'Start Gateway';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                showStatus('complete-status', 'error', 'Setup failed: ' + err.message);
+                btn.innerHTML = 'Start Gateway';
+                btn.disabled = false;
+            }
+        }
+
+        function showStatus(containerId, type, message) {
+            const container = document.getElementById(containerId);
+            container.classList.remove('hidden');
+            container.className = `status-indicator status-${type}`;
+            container.innerHTML = message;
+        }
+
+        // Add event listeners for dropdowns
+        document.getElementById('serial-port').addEventListener('change', updateTestButtons);
+        document.getElementById('audio-card').addEventListener('change', updateTestButtons);
+    </script>
+</body>
+</html>

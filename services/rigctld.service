@@ -1,0 +1,20 @@
+[Unit]
+Description=Hamlib rigctld for ReticulumHF
+After=network.target
+ConditionPathExists=/etc/reticulumhf/.setup_complete
+ConditionPathExists=/etc/reticulumhf/config.env
+# Restart limits - must be in [Unit] section
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+Group=dialout
+EnvironmentFile=/etc/reticulumhf/config.env
+ExecStart=/bin/bash -c 'exec $RIGCTLD_CMD'
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

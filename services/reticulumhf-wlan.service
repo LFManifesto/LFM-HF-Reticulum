@@ -1,0 +1,15 @@
+[Unit]
+Description=ReticulumHF WiFi AP Static IP
+Documentation=https://github.com/LFManifesto/ReticulumHF
+Before=hostapd.service
+After=sys-subsystem-net-devices-wlan0.device
+Wants=sys-subsystem-net-devices-wlan0.device
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/sbin/ip link set wlan0 up; /sbin/ip addr add 192.168.4.1/24 dev wlan0 2>/dev/null || true'
+ExecStop=/sbin/ip addr del 192.168.4.1/24 dev wlan0
+
+[Install]
+WantedBy=multi-user.target
