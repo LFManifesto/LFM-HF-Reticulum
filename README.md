@@ -43,16 +43,29 @@ Download the SD card image, flash it, boot, configure via web portal.
 | WiFi SSID | ReticulumHF-Setup |
 | WiFi Password | reticulumhf |
 | Gateway IP | 192.168.4.1 |
-| RNS TCP | 4242 |
+| Sideband/NomadNet Port | 4242 |
+| MeshChat Port | 8001 |
 | SSH | pi / reticulumhf |
 
-### Sideband Configuration
+### Client Connections
+
+**Sideband / NomadNet** (port 4242, no KISS framing):
 
 | Setting | Value |
 |---------|-------|
 | Host | 192.168.4.1 |
 | Port | 4242 |
 | Interface Type | TCP Client |
+
+**MeshChat** (port 8001, KISS framing required):
+
+| Setting | Value |
+|---------|-------|
+| Target Host | 192.168.4.1 |
+| Target Port | 8001 |
+| KISS Framing | YES |
+| Interface Mode | Full |
+| Inferred Bitrate | 290 (for DATAC1) |
 
 ### Audio Tuning
 
@@ -266,12 +279,11 @@ Edit `~/.reticulum/config`:
 
 Terminal 1 - Start rigctld and freedvtnc2:
 ```bash
-rigctld -m 3088 -r /dev/ttyUSB0 -s 19200 \
-    --set-conf=serial_handshake=None,rts_state=OFF,dtr_state=OFF &
+rigctld -m 3088 -r /dev/ttyUSB0 -s 19200 -t 4532 -P RTS &
 
 freedvtnc2 --input-device 1 --output-device 1 --mode DATAC1 \
-    --rigctld-port 4532 --ptt-on-delay-ms 300 --ptt-off-delay-ms 200 \
-    --output-volume -3
+    --rigctld-port 4532 --kiss-tcp-port 8001 --kiss-tcp-address 0.0.0.0 \
+    --ptt-on-delay-ms 300 --ptt-off-delay-ms 200 --output-volume -3
 ```
 
 Terminal 2 - Start NomadNet:
@@ -346,12 +358,16 @@ tail -f ~/.reticulum/logfile    # Live log
 
 ## Verified Hardware
 
-| Component | Model |
-|-----------|-------|
-| Computer | Raspberry Pi 4 (4GB) |
-| Radio | Xiegu G90 (Hamlib 3088) |
-| Interface | Digirig Mobile |
-| Phone App | Sideband (Android) |
+| Component | Model | Notes |
+|-----------|-------|-------|
+| Computer | Raspberry Pi 4 (4GB) | |
+| Radio | Xiegu G90 | Hamlib 3088, PTT via RTS |
+| Radio | Yaesu FT-818 | Hamlib 1020 (use FT-817), PTT via RTS |
+| Radio | (tr)uSDX | VOX mode (no CAT PTT) |
+| Interface | Digirig Mobile | CAT + Audio |
+| Interface | Digirig Lite | Audio only (use VOX) |
+| Phone App | Sideband (Android) | Port 4242 |
+| Desktop App | MeshChat | Port 8001, KISS framing |
 
 ## References
 
@@ -360,6 +376,8 @@ Software:
 - codec2 Data Modes: https://github.com/drowe67/codec2/blob/main/README_data.md
 - freedvtnc2: https://github.com/xssfox/freedvtnc2
 - Sideband: https://github.com/markqvist/Sideband
+- MeshChat: https://github.com/liamcottle/meshtastic-meshchat
+- NomadNet: https://github.com/markqvist/NomadNet
 - Hamlib Supported Radios: https://github.com/Hamlib/Hamlib/wiki/Supported-Radios
 
 Propagation:
