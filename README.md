@@ -4,10 +4,17 @@ Reticulum over HF radio using FreeDV.
 
 ## Overview
 
-Runs Reticulum over HF radio using FreeDV DATAC1 mode for modulation. Provides encrypted peer-to-peer communication without internet infrastructure.
+Runs Reticulum over HF radio using FreeDV data modes. Provides encrypted peer-to-peer communication without internet infrastructure.
+
+**Supported FreeDV Modes:**
+| Mode | Bitrate | Use Case |
+|------|---------|----------|
+| DATAC1 | 290 bps | Default - robust for most HF conditions |
+| DATAC3 | 312 bps | Good conditions, slightly faster |
+| DATAC4 | 87 bps | Weak signals, emergency comms |
 
 Two installation methods:
-- **Pre-built Image** - Flash and go. Includes web-based setup wizard and TCP bridge for Sideband.
+- **Pre-built Image** - Flash and go. Web-based setup wizard with mode selection.
 - **Manual Installation** - Build everything yourself on existing Pi.
 
 ## Pre-built Image
@@ -30,11 +37,11 @@ Download the SD card image, flash it, boot, configure via web portal.
 ### What's Included
 
 - Raspberry Pi OS Bookworm Lite (64-bit)
-- RNS with TCP server on port 4242
-- freedvtnc2 (FreeDV DATAC1 modem)
+- RNS 1.1.3 with TCP server on port 4242
+- freedvtnc2 (FreeDV modem - supports DATAC1/DATAC3/DATAC4)
 - codec2 (built from source)
-- Hamlib rigctld
-- Web portal with service controls
+- Hamlib rigctld with PTT support
+- Web portal with mode selection and service controls
 
 ### Network
 
@@ -65,7 +72,13 @@ Download the SD card image, flash it, boot, configure via web portal.
 | Target Port | 8001 |
 | KISS Framing | YES |
 | Interface Mode | Full |
-| Inferred Bitrate | 290 (for DATAC1) |
+
+Bitrate by FreeDV mode (set in MeshChat):
+| Mode | Inferred Bitrate |
+|------|------------------|
+| DATAC1 | 290 |
+| DATAC3 | 312 |
+| DATAC4 | 87 |
 
 ### Audio Tuning
 
@@ -87,7 +100,7 @@ Build everything from scratch on a fresh Raspberry Pi OS installation.
 
 ### Test Results
 
-Tested with two identical setups. Local test only (73 miles). Last test was in December of 2025.
+Tested January 2026 with G90, FT-818, and truSDX.
 
 ### Test Environment
 
@@ -95,24 +108,23 @@ Tested with two identical setups. Local test only (73 miles). Last test was in D
 |-----------|---------------|
 | Computer | Raspberry Pi 4 (4GB) |
 | OS | Raspberry Pi OS Lite Bookworm 64-bit |
-| Radio | Xiegu G90 (Hamlib model 3088) |
-| Interface | Digirig Mobile (USB audio + CAT) |
-| Reticulum | 0.8.4 |
-| freedvtnc2 | Latest from PyPI |
+| Radio | Xiegu G90, Yaesu FT-818, (tr)uSDX |
+| Interface | Digirig Mobile (CAT + Audio), Digirig Lite (Audio/VOX) |
+| Reticulum | 1.1.3 |
+| freedvtnc2 | 0.0.1 |
 | codec2 | Built from source |
 
-### Performance Specifications
+### FreeDV Mode Specifications
 
 From codec2 documentation (https://github.com/drowe67/codec2/blob/main/README_data.md):
 
-| Parameter | Value |
-|-----------|-------|
-| Data rate | 980 bps |
-| RF Bandwidth | 1.7 kHz |
-| Payload per frame | 510 bytes |
-| Frame duration | 4.18 seconds |
-| Target SNR | 5 dB |
-| Carriers | 27 |
+| Mode | Bitrate | RF BW | Payload | Frame Duration | Min SNR |
+|------|---------|-------|---------|----------------|---------|
+| DATAC1 | 290 bps | 1.7 kHz | 510 bytes | 4.18 sec | 5 dB |
+| DATAC3 | 312 bps | 1.7 kHz | 258 bytes | 2.06 sec | 8 dB |
+| DATAC4 | 87 bps | 500 Hz | 128 bytes | 5.17 sec | -2 dB |
+
+**DATAC1** is recommended for most conditions. Use **DATAC4** for emergency/weak signal work.
 
 Range depends on HF propagation (ionosphere, solar activity, time of day).
 
@@ -145,11 +157,11 @@ Range depends on HF propagation (ionosphere, solar activity, time of day).
 ```
 
 Work Flow:
-1. User writes message in NomadNet
+1. User writes message in client app (Sideband, NomadNet, MeshChat)
 2. Reticulum encrypts packet with recipient's public key
-3. freedvtnc2 modulates to FreeDV DATAC1 audio
-4. rigctld keys radio, audio transmits over HF
-5. Remote station decodes and delivers to NomadNet
+3. freedvtnc2 modulates to FreeDV audio (DATAC1/DATAC3/DATAC4)
+4. rigctld keys radio via RTS (or VOX for audio-only interfaces)
+5. Audio transmits over HF, remote station decodes and delivers
 
 ### Step 1: System Preparation
 
