@@ -183,15 +183,20 @@ def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int
     ptt_on_delay = radio.get("ptt_on_delay_ms", 300)
     ptt_off_delay = radio.get("ptt_off_delay_ms", 200)
 
+    # Check if VOX mode (audio-only interface, no CAT control)
+    ptt_method = radio.get("ptt_method", "")
+    use_vox = (ptt_method.upper() == "VOX") or (serial_port is None or serial_port == "")
+    rigctld_port = "0" if use_vox else "4532"
+
     cmd_parts = [
         "/home/pi/.local/bin/freedvtnc2",
         "--no-cli",
         f"--input-device {device_id}",
         f"--output-device {device_id}",
         f"--mode {freedv_mode}",
-        "--rigctld-port 4532",
+        f"--rigctld-port {rigctld_port}",
         "--kiss-tcp-port 8001",
-        "--kiss-tcp-address 127.0.0.1",
+        "--kiss-tcp-address 0.0.0.0",
         f"--ptt-on-delay-ms {ptt_on_delay}",
         f"--ptt-off-delay-ms {ptt_off_delay}",
         "--output-volume -3"
@@ -202,7 +207,7 @@ def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int
 
 def generate_rigctld_command(radio_id: str, serial_port: str) -> str:
     """
-    Generate rigctld launch command with proper serial settings and CI-V address.
+    Generate rigctld launch command.
     """
     radios = load_radios()
     radio = next((r for r in radios if r["id"] == radio_id), None)
@@ -215,41 +220,13 @@ def generate_rigctld_command(radio_id: str, serial_port: str) -> str:
         f"-m {radio['hamlib_id']}",
         f"-r {serial_port}",
         f"-s {radio['baud_rate']}",
-        "-t 4532"  # Explicit port for freedvtnc2 connection
+        "-t 4532"
     ]
 
-    # Add serial settings
-    serial_settings = radio.get("serial_settings", {})
-    conf_parts = []
-
-    # Handshake setting
-    handshake = serial_settings.get("handshake", "none")
-    if handshake == "none":
-        conf_parts.append("serial_handshake=None")
-    elif handshake == "hardware":
-        conf_parts.append("serial_handshake=Hardware")
-
-    # RTS/DTR states
-    if serial_settings.get("rts_state"):
-        conf_parts.append(f"rts_state={serial_settings['rts_state']}")
-    if serial_settings.get("dtr_state"):
-        conf_parts.append(f"dtr_state={serial_settings['dtr_state']}")
-
-    # Data/stop bits (important for Yaesu radios)
-    if serial_settings.get("stop_bits"):
-        conf_parts.append(f"stop_bits={serial_settings['stop_bits']}")
-    if serial_settings.get("data_bits"):
-        conf_parts.append(f"data_bits={serial_settings['data_bits']}")
-
-    # CI-V address for Icom radios
-    civ_address = radio.get("civ_address")
-    if civ_address:
-        # Remove 0x prefix if present and format for hamlib
-        civ_hex = civ_address.replace("0x", "").replace("0X", "")
-        conf_parts.append(f"civaddr={civ_hex}")
-
-    if conf_parts:
-        cmd_parts.append(f"--set-conf={','.join(conf_parts)}")
+    # PTT method (RTS for Digirig, CAT for some radios)
+    ptt_method = radio.get("ptt_method")
+    if ptt_method and ptt_method.upper() != "VOX":
+        cmd_parts.append(f"-P {ptt_method}")
 
     return " ".join(cmd_parts)
 

@@ -590,6 +590,37 @@
             </div>
         </div>
 
+        <!-- MeshChat Setup Instructions -->
+        <div class="info-box">
+            <h3>Connect with MeshChat (Desktop)</h3>
+
+            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0;"><strong>Step 1:</strong> Install MeshChat on your computer</p>
+                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">
+                    Download from <a href="https://github.com/liamcottle/meshtastic-meshchat" target="_blank" style="color: var(--accent);">MeshChat GitHub</a>
+                </p>
+            </div>
+
+            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0;"><strong>Step 2:</strong> Add TCP Client Interface</p>
+                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Settings → Interfaces → Add Interface → TCP Client Interface</p>
+                <table style="width: 100%; margin-top: 10px; font-size: 0.9rem;">
+                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">Target Host</td><td style="padding: 4px 8px;"><code>{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
+                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">Target Port</td><td style="padding: 4px 8px;"><code>8001</code></td></tr>
+                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">KISS Framing</td><td style="padding: 4px 8px;"><code>YES</code> (required)</td></tr>
+                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">Interface Mode</td><td style="padding: 4px 8px;"><code>Full</code></td></tr>
+                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">Inferred Bitrate</td><td style="padding: 4px 8px;"><code>290</code> (for DATAC1)</td></tr>
+                </table>
+            </div>
+
+            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px;">
+                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">
+                    <strong>Note:</strong> MeshChat connects directly to freedvtnc2 (port 8001) with KISS framing.
+                    Sideband/NomadNet use port 4242 (no KISS).
+                </p>
+            </div>
+        </div>
+
         <!-- Advanced SSH Access -->
         <div class="info-box info-box-muted">
             <h3>Advanced: SSH Access</h3>

@@ -8,6 +8,7 @@
       "model": "G90",
       "hamlib_id": 3088,
       "baud_rate": 19200,
+      "ptt_method": "RTS",
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -346,8 +347,9 @@
       "id": "yaesu_ft818",
       "manufacturer": "Yaesu",
       "model": "FT-818",
-      "hamlib_id": 1041,
+      "hamlib_id": 1020,
       "baud_rate": 9600,
+      "ptt_method": "RTS",
       "ptt_on_delay_ms": 350,
       "ptt_off_delay_ms": 250,
       "serial_settings": {
@@ -672,6 +674,7 @@
       "model": "(tr)uSDX",
       "hamlib_id": 2028,
       "baud_rate": 115200,
+      "ptt_method": "VOX",
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
