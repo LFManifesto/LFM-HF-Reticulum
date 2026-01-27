@@ -18,7 +18,10 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from hardware import (
     load_radios, detect_serial_ports, detect_audio_devices,
     find_digirig, test_cat_connection, test_ptt, release_ptt,
-    set_audio_levels, get_audio_controls, get_system_info
+    set_audio_levels, get_audio_controls, get_radio_audio_guidance,
+    get_system_info, start_audio_monitor, stop_audio_monitor,
+    get_audio_levels, get_audio_level_single, set_single_audio_control,
+    get_single_audio_control
 )
 
 # Configuration constants
@@ -433,6 +436,121 @@ def api_audio_controls(card):
     })
 
 
+@app.route("/api/radio/<radio_id>/audio-guide")
+def api_radio_audio_guide(radio_id):
+    """
+    API endpoint to get audio configuration guide for a specific radio.
+    Returns the audio_settings from radios.json with helpful context for the Pi gateway.
+    """
+    radio = get_radio_by_id(radio_id)
+    if not radio:
+        return jsonify({"success": False, "error": f"Unknown radio: {radio_id}"}), 404
+
+    audio_interface = radio.get("audio_interface", "unknown")
+    audio_settings = radio.get("audio_settings", {})
+
+    # Build response with gateway-specific guidance
+    response = {
+        "success": True,
+        "radio_id": radio_id,
+        "radio_name": f"{radio['manufacturer']} {radio['model']}",
+        "audio_interface": audio_interface,
+        "requires_external_audio": radio.get("requires_external_audio", audio_interface == "external"),
+        "audio_settings": audio_settings,
+        "freedv_target_level": "-5 dB (acceptable range: -10 to 0 dB)",
+        "gateway_notes": []
+    }
+
+    # Add gateway-specific notes based on audio interface type
+    if audio_interface == "builtin":
+        response["gateway_notes"] = [
+            "This radio has built-in USB audio - connect directly to the Pi via USB",
+            "Audio levels are controlled via the radio's menu (not ALSA mixer)",
+            "If freedvtnc2 shows input level below -10 dB, increase the radio's RX audio output setting",
+            "The Pi cannot adjust input levels for this radio - you must use the radio's menu"
+        ]
+        if "radio_rx_menu" in audio_settings:
+            response["gateway_notes"].append(f"RX level setting: {audio_settings['radio_rx_menu']}")
+    elif audio_interface == "external":
+        response["gateway_notes"] = [
+            "This radio requires an external interface (Digirig/SignaLink)",
+            "Audio levels can be adjusted via ALSA mixer AND radio settings",
+            "If freedvtnc2 shows input level below -10 dB, increase ALSA Capture AND radio output level",
+            f"Recommended ALSA Capture: {audio_settings.get('recommended_alsa_rx', 75)}%"
+        ]
+        if "radio_rx_menu" in audio_settings:
+            response["gateway_notes"].append(f"Radio RX level: {audio_settings['radio_rx_menu']}")
+
+    return jsonify(response)
+
+
+@app.route("/api/audio-monitor/start", methods=["POST"])
+def api_audio_monitor_start():
+    """Start real-time audio level monitoring."""
+    data = request.json or {}
+    card = data.get("card")
+
+    if card is None:
+        return jsonify({"success": False, "error": "Missing 'card' parameter"}), 400
+
+    try:
+        card = int(card)
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid card number"}), 400
+
+    result = start_audio_monitor(card)
+    return jsonify(result)
+
+
+@app.route("/api/audio-monitor/stop", methods=["POST"])
+def api_audio_monitor_stop():
+    """Stop audio level monitoring."""
+    result = stop_audio_monitor()
+    return jsonify(result)
+
+
+@app.route("/api/audio-monitor/levels")
+def api_audio_monitor_levels():
+    """Get current audio levels from the monitor."""
+    result = get_audio_levels()
+    return jsonify(result)
+
+
+@app.route("/api/audio-level/check/<int:card>")
+def api_audio_level_check(card):
+    """Get a single audio level reading (1 second sample)."""
+    result = get_audio_level_single(card)
+    return jsonify(result)
+
+
+@app.route("/api/audio-level/set", methods=["POST"])
+def api_audio_level_set():
+    """Set a specific ALSA mixer control level."""
+    data = request.json or {}
+    card = data.get("card")
+    control = data.get("control")
+    level = data.get("level")
+
+    if card is None or control is None or level is None:
+        return jsonify({"success": False, "error": "Missing card, control, or level"}), 400
+
+    try:
+        card = int(card)
+        level = int(level)
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid card or level"}), 400
+
+    result = set_single_audio_control(card, control, level)
+    return jsonify(result)
+
+
+@app.route("/api/audio-level/get/<int:card>/<control>")
+def api_audio_level_get(card, control):
+    """Get current level for a specific ALSA mixer control."""
+    result = get_single_audio_control(card, control)
+    return jsonify(result)
+
+
 def validate_wifi_settings(ssid: str, password: str) -> Tuple[bool, str]:
     """
     Validate WiFi SSID and password.
@@ -582,6 +700,7 @@ def api_complete_setup():
     serial_port = data.get("serial_port")
     audio_card = data.get("audio_card")
     freedv_mode = data.get("freedv_mode", "DATAC1")
+    user_vox_mode = data.get("vox_mode", False)  # User explicitly chose VOX mode
 
     if not all([radio_id, audio_card is not None]):
         return jsonify({"success": False, "error": "Missing required fields"}), 400
@@ -593,7 +712,7 @@ def api_complete_setup():
         return jsonify({"success": False, "error": f"Unknown radio: {radio_id}"}), 400
 
     ptt_method = radio.get("ptt_method", "")
-    is_vox_radio = ptt_method.upper() == "VOX"
+    is_vox_radio = ptt_method.upper() == "VOX" or user_vox_mode  # Radio default OR user choice
 
     # Non-VOX radios require a serial port for CAT control
     if not is_vox_radio and not serial_port:
@@ -919,6 +1038,7 @@ def api_config_info():
         "radio": None,
         "serial_port": None,
         "audio_card": None,
+        "freedv_mode": "DATAC1",
         "setup_complete": is_setup_complete()
     }
 
@@ -941,11 +1061,76 @@ def api_config_info():
                     elif line.startswith("SERIAL_PORT="):
                         config["serial_port"] = line.split("=", 1)[1]
                     elif line.startswith("AUDIO_CARD="):
-                        config["audio_card"] = line.split("=", 1)[1]
+                        try:
+                            config["audio_card"] = int(line.split("=", 1)[1])
+                        except ValueError:
+                            config["audio_card"] = None
+                    elif line.startswith("FREEDV_MODE="):
+                        config["freedv_mode"] = line.split("=", 1)[1]
         except Exception:
             pass
 
     return jsonify(config)
+
+
+@app.route("/api/set-freedv-mode", methods=["POST"])
+def api_set_freedv_mode():
+    """API endpoint to change FreeDV mode."""
+    data = request.get_json()
+    new_mode = data.get("mode", "DATAC1")
+
+    valid_modes = ["DATAC1", "DATAC3", "DATAC4"]
+    if new_mode not in valid_modes:
+        return jsonify({"success": False, "error": f"Invalid mode. Must be one of: {', '.join(valid_modes)}"})
+
+    env_file = Path("/etc/reticulumhf/config.env")
+    if not env_file.exists():
+        return jsonify({"success": False, "error": "Configuration not found. Run setup first."})
+
+    try:
+        # Read current config
+        config_lines = []
+        radio_id = None
+        serial_port = None
+        audio_card = None
+
+        with open(env_file) as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped.startswith("RADIO_ID="):
+                    radio_id = stripped.split("=", 1)[1]
+                elif stripped.startswith("SERIAL_PORT="):
+                    serial_port = stripped.split("=", 1)[1]
+                elif stripped.startswith("AUDIO_CARD="):
+                    try:
+                        audio_card = int(stripped.split("=", 1)[1])
+                    except ValueError:
+                        pass
+
+                # Update FREEDV_MODE line
+                if stripped.startswith("FREEDV_MODE="):
+                    config_lines.append(f"FREEDV_MODE={new_mode}\n")
+                # Update FREEDVTNC2_CMD line
+                elif stripped.startswith("FREEDVTNC2_CMD="):
+                    if radio_id and audio_card is not None:
+                        new_cmd = generate_freedvtnc2_command(radio_id, serial_port or "", audio_card, new_mode)
+                        config_lines.append(f'FREEDVTNC2_CMD="{new_cmd}"\n')
+                    else:
+                        config_lines.append(line)
+                else:
+                    config_lines.append(line if line.endswith('\n') else line + '\n')
+
+        # Write updated config
+        with open(env_file, "w") as f:
+            f.writelines(config_lines)
+
+        # Restart freedvtnc2 service
+        subprocess.run(["systemctl", "restart", "freedvtnc2"], capture_output=True, timeout=10)
+
+        return jsonify({"success": True, "mode": new_mode})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 @app.route("/api/versions")

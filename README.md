@@ -1,21 +1,22 @@
 # ReticulumHF
 
-Reticulum over HF radio using FreeDV.
+**v0.1.0-alpha** - Reticulum over HF radio using FreeDV.
 
 ## Overview
 
 Runs Reticulum over HF radio using FreeDV data modes. Provides encrypted peer-to-peer communication without internet infrastructure.
 
-**Supported FreeDV Modes:**
-| Mode | Bitrate | Use Case |
-|------|---------|----------|
-| DATAC1 | 290 bps | Default - robust for most HF conditions |
-| DATAC3 | 312 bps | Good conditions, slightly faster |
-| DATAC4 | 87 bps | Weak signals, emergency comms |
+**Key Features:**
+- Web-based setup wizard - no command line required
+- Audio level monitoring and ALSA mixer controls
+- FreeDV mode selection based on band conditions
+- VOX mode support for audio-only interfaces
+- Works with Sideband, MeshChat, NomadNet
 
-Two installation methods:
-- **Pre-built Image** - Flash and go. Web-based setup wizard with mode selection.
-- **Manual Installation** - Build everything yourself on existing Pi.
+**Tested Radios:**
+- Xiegu G90 (Digirig Mobile)
+- Yaesu FT-818 (Digirig Mobile)
+- (tr)uSDX (Digirig Lite + VOX)
 
 ## Pre-built Image
 
@@ -23,46 +24,67 @@ Download the SD card image, flash it, boot, configure via web portal.
 
 ### Download
 
-[reticulumhf-20260126.img.xz](https://github.com/LFManifesto/ReticulumHF/releases/download/v2.0/reticulumhf-20260126.img.xz)
+[reticulumhf-v0.1.0-alpha.img.xz](https://github.com/LFManifesto/ReticulumHF/releases)
 
-### Setup
+### Quick Start
 
-1. Flash to SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/) - select "Use custom"
+1. Flash to SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
 2. Insert SD card, connect radio via Digirig, power on
-3. Connect phone to WiFi: **ReticulumHF-Setup** (password: `reticulumhf`)
+3. Connect to WiFi: **ReticulumHF** (password: `reticulumhf`)
 4. Open **http://192.168.4.1** in browser
-5. Complete setup wizard - select radio model, verify audio levels
-6. In Sideband, add TCP interface: `192.168.4.1:4242`
+5. Complete 6-step setup wizard
+6. Connect Sideband to `192.168.4.1:4242`
 
-### What's Included
+### Setup Wizard (6 Steps)
 
-- Raspberry Pi OS Bookworm Lite (64-bit)
-- RNS 1.1.3 with TCP server on port 4242
-- freedvtnc2 (FreeDV modem - supports DATAC1/DATAC3/DATAC4)
-- codec2 (built from source)
-- Hamlib rigctld with PTT support
-- Web portal with mode selection and service controls
+1. **Select Radio** - Choose from supported radios (tested radios marked)
+2. **Radio Settings** - Configure your radio with the displayed menu values
+3. **Hardware Detection** - Automatically detects Digirig, serial port, audio device
+4. **Test Connection** - Verify CAT and PTT (or check "Using VOX mode" for audio-only)
+5. **Network Security** - Optional IFAC encryption for the gateway
+6. **Start Gateway** - Launches services and redirects to status page
 
-### Network
+### Status Page Features
 
-| | |
-|---|---|
-| WiFi SSID | ReticulumHF-Setup |
+- **Audio Level Monitoring** - Real-time VU meter with guidance
+  - Tune to active frequency (7.078 JS8Call, 14.074 FT8) to verify audio
+  - Target: -10 to -5 dB on incoming signals
+  - Noise floor at -30 to -60 dB is normal
+- **ALSA Mixer Controls** - Adjust input/output levels from the web UI
+- **FreeDV Mode Selection** - Switch between DATAC1/DATAC3/DATAC4 based on conditions
+- **Service Controls** - Restart/view logs for rnsd, rigctld, freedvtnc2
+
+### FreeDV Modes
+
+| Mode | Bitrate | Min SNR | Use Case |
+|------|---------|---------|----------|
+| DATAC1 | 290 bps | 5 dB | Default - good conditions |
+| DATAC3 | 124 bps | 0 dB | Moderate conditions |
+| DATAC4 | 87 bps | -4 dB | Poor conditions, weak signals |
+
+**IMPORTANT: All stations must use the same FreeDV mode to communicate. Coordinate with other operators before changing modes.**
+
+### Network Configuration
+
+| Setting | Value |
+|---------|-------|
+| WiFi SSID | ReticulumHF |
 | WiFi Password | reticulumhf |
 | Gateway IP | 192.168.4.1 |
+| Web Portal | http://192.168.4.1 |
 | Sideband/NomadNet Port | 4242 |
-| MeshChat Port | 8001 |
+| MeshChat Port | 8001 (KISS framing) |
 | SSH | pi / reticulumhf |
 
 ### Client Connections
 
-**Sideband / NomadNet** (port 4242, no KISS framing):
+**Sideband / NomadNet / Columba** (port 4242):
 
 | Setting | Value |
 |---------|-------|
+| Interface Type | TCP Client |
 | Host | 192.168.4.1 |
 | Port | 4242 |
-| Interface Type | TCP Client |
 
 **MeshChat** (port 8001, KISS framing required):
 
@@ -72,201 +94,89 @@ Download the SD card image, flash it, boot, configure via web portal.
 | Target Port | 8001 |
 | KISS Framing | YES |
 | Interface Mode | Full |
+| Inferred Bitrate | 290 (DATAC1), 124 (DATAC3), 87 (DATAC4) |
 
-Bitrate by FreeDV mode (set in MeshChat):
-| Mode | Inferred Bitrate |
-|------|------------------|
-| DATAC1 | 290 |
-| DATAC3 | 312 |
-| DATAC4 | 87 |
+### What's Included
 
-### Audio Tuning
+- Raspberry Pi OS Bookworm Lite (64-bit)
+- RNS (Reticulum Network Stack)
+- freedvtnc2 (FreeDV modem)
+- codec2 (built from source)
+- Hamlib rigctld (CAT/PTT control)
+- Web portal with setup wizard and status dashboard
 
-```bash
-ssh pi@192.168.4.1
-alsamixer
-```
+---
 
-- Press F6 to select USB audio device
-- Press F4 for capture view
-- Set capture 70-80%, playback 40-60%
-- Save: `sudo alsactl store`
+## Verified Hardware
+
+| Component | Model | Notes |
+|-----------|-------|-------|
+| Computer | Raspberry Pi 4 (4GB) | Recommended |
+| Radio | Xiegu G90 | **TESTED** - Hamlib 3088, PTT via RTS |
+| Radio | Yaesu FT-818 | **TESTED** - Hamlib 1020 (FT-817), PTT via RTS |
+| Radio | (tr)uSDX | **TESTED** - VOX mode, Digirig Lite |
+| Interface | Digirig Mobile | CAT + Audio (recommended) |
+| Interface | Digirig Lite | Audio only - use VOX mode |
+| Phone App | Sideband (Android/iOS) | Port 4242 |
+| Desktop App | MeshChat | Port 8001, KISS framing |
+
+### Radio-Specific Notes
+
+**Xiegu G90:**
+- Mode: USB-D (USB Digital)
+- AGC: OFF
+- AUX IN: 10, AUX OUT: 13
+- Hamlib model: 3088, Baud: 19200
+
+**Yaesu FT-818:**
+- Mode: USB or DIG
+- Use Hamlib model 1020 (FT-817), NOT 1041
+- Baud: 4800
+- Set appropriate menu items for DATA input
+
+**(tr)uSDX:**
+- Mode: USB
+- Enable VOX (Menu 3.1: ON)
+- Adjust Noise Gate (Menu 3.2) for reliable PTT
+- Volume (Menu 1.1): 8-10
+- TX Drive (Menu 3.3): 4
+- Requires Digirig Lite or similar audio interface
 
 ---
 
 ## Manual Installation
 
-Build everything from scratch on a fresh Raspberry Pi OS installation.
+For building from scratch on existing Raspberry Pi OS.
 
-### Test Results
-
-Tested January 2026 with G90, FT-818, and truSDX.
-
-### Test Environment
-
-| Component | Specification |
-|-----------|---------------|
-| Computer | Raspberry Pi 4 (4GB) |
-| OS | Raspberry Pi OS Lite Bookworm 64-bit |
-| Radio | Xiegu G90, Yaesu FT-818, (tr)uSDX |
-| Interface | Digirig Mobile (CAT + Audio), Digirig Lite (Audio/VOX) |
-| Reticulum | 1.1.3 |
-| freedvtnc2 | 0.0.1 |
-| codec2 | Built from source |
-
-### FreeDV Mode Specifications
-
-From codec2 documentation (https://github.com/drowe67/codec2/blob/main/README_data.md):
-
-| Mode | Bitrate | RF BW | Payload | Frame Duration | Min SNR |
-|------|---------|-------|---------|----------------|---------|
-| DATAC1 | 290 bps | 1.7 kHz | 510 bytes | 4.18 sec | 5 dB |
-| DATAC3 | 312 bps | 1.7 kHz | 258 bytes | 2.06 sec | 8 dB |
-| DATAC4 | 87 bps | 500 Hz | 128 bytes | 5.17 sec | -2 dB |
-
-**DATAC1** is recommended for most conditions. Use **DATAC4** for emergency/weak signal work.
-
-Range depends on HF propagation (ionosphere, solar activity, time of day).
-
-### Architecture
-
-```
-+-------------+      +----------+      +-----------+
-|  NomadNet   |----->|Reticulum |----->|freedvtnc2 |
-|   (LXMF)    |      |  Stack   |      |   (TNC)   |
-+-------------+      +----------+      +-----------+
-                                             |
-                                             v
-                                       +---------+
-                                       | rigctld |
-                                       |  (PTT)  |
-                                       +---------+
-                                             |
-                                             v
-                                       +---------+
-                                       |Digirig  |
-                                       | Audio+  |
-                                       |  CAT    |
-                                       +---------+
-                                             |
-                                             v
-                                       +---------+
-                                       | G90 HF  |
-                                       |  Radio  |
-                                       +---------+
-```
-
-Work Flow:
-1. User writes message in client app (Sideband, NomadNet, MeshChat)
-2. Reticulum encrypts packet with recipient's public key
-3. freedvtnc2 modulates to FreeDV audio (DATAC1/DATAC3/DATAC4)
-4. rigctld keys radio via RTS (or VOX for audio-only interfaces)
-5. Audio transmits over HF, remote station decodes and delivers
-
-### Step 1: System Preparation
-
-Flash Raspberry Pi OS Lite (Bookworm, 64-bit). Enable SSH.
+### Prerequisites
 
 ```bash
-ssh user@<pi-ip-address>
 sudo apt update && sudo apt upgrade -y
-```
-
-### Step 2: Install Dependencies
-
-```bash
 sudo apt install -y git build-essential cmake python3 python3-pip python3-venv \
     portaudio19-dev alsa-utils libhamlib-utils libhamlib-dev pipx
 pipx ensurepath
 source ~/.bashrc
 ```
 
-### Step 3: Build Codec2
+### Build Codec2
 
 ```bash
 cd ~
 git clone https://github.com/drowe67/codec2.git
-cd codec2
-mkdir build_linux && cd build_linux
-cmake ..
-make
-sudo make install
-sudo ldconfig
+cd codec2 && mkdir build_linux && cd build_linux
+cmake .. && make && sudo make install && sudo ldconfig
 ```
 
-Verify:
-```bash
-ldconfig -p | grep codec2
-```
-
-### Step 4: Install Reticulum Stack
+### Install Reticulum Stack
 
 ```bash
 pipx install rns
 pipx install nomadnet
 pipx install freedvtnc2
 pipx runpip rns install numpy pyaudio scipy
-pipx runpip nomadnet install numpy pyaudio scipy
 ```
 
-Initialize Reticulum config:
-```bash
-rnsd --config ~/.reticulum &
-sleep 3
-pkill rnsd
-```
-
-### Step 5: Connect Hardware
-
-1. Connect Digirig to Pi via USB
-2. Connect Digirig audio cable to G90 ACC port
-3. Connect Digirig CAT cable to G90 CAT port
-4. Power on G90
-
-### Step 6: Verify Hardware
-
-```bash
-# Check USB devices
-lsusb
-# Expected: Silicon Labs CP210x (CAT) and C-Media CM108 (audio)
-
-# Check audio
-arecord -l
-# Expected: USB PnP Sound Device
-
-# Check serial
-ls -la /dev/ttyUSB*
-# Expected: /dev/ttyUSB0
-
-# Add user to dialout group
-sudo usermod -a -G dialout $USER
-# Log out and back in
-```
-
-### Step 7: Test Radio CAT
-
-```bash
-rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 f
-```
-
-Expected: Returns current frequency (e.g., `7100000`).
-
-### Step 8: Configure G90 Audio Input
-
-On the G90:
-1. Press FUNC
-2. Press POW until you see "INPUT"
-3. Use knob to select LINE (not MIC)
-
-Set ALSA levels (adjust card number as needed):
-```bash
-amixer -c 3 sset 'Speaker' 64%
-amixer -c 3 sset 'Mic',0 cap 75%
-amixer -c 3 sset 'Mic' unmute
-sudo alsactl store
-```
-
-### Step 9: Configure Reticulum
+### Configure Reticulum
 
 Edit `~/.reticulum/config`:
 
@@ -287,35 +197,25 @@ Edit `~/.reticulum/config`:
     kiss_framing = yes
 ```
 
-### Step 10: Start the Stack
+### Start Services
 
-Terminal 1 - Start rigctld and freedvtnc2:
 ```bash
+# Start rigctld (for CAT-controlled PTT)
 rigctld -m 3088 -r /dev/ttyUSB0 -s 19200 -t 4532 -P RTS &
 
+# Start freedvtnc2
 freedvtnc2 --input-device 1 --output-device 1 --mode DATAC1 \
     --rigctld-port 4532 --kiss-tcp-port 8001 --kiss-tcp-address 0.0.0.0 \
     --ptt-on-delay-ms 300 --ptt-off-delay-ms 200 --output-volume -3
+
+# For VOX mode (no CAT), use --rigctld-port 0
 ```
-
-Terminal 2 - Start NomadNet:
-```bash
-nomadnet
-```
-
-### Step 11: Test Transmission
-
-In NomadNet:
-1. Select Network tab
-2. Send an announcement
-
-Radio should key up for 3-5 seconds and transmit.
 
 ---
 
 ## Troubleshooting
 
-### Hardware Verification
+### Hardware Check
 
 ```bash
 lsusb                      # List USB devices
@@ -326,76 +226,71 @@ ls -la /dev/ttyUSB*        # List serial ports
 ### CAT/PTT Test
 
 ```bash
+rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 f    # Get frequency
 rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 1  # Key transmitter
-rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 0  # Unkey transmitter
-```
-
-### Reticulum Status
-
-```bash
-rnstatus                        # Interface status
-tail -f ~/.reticulum/logfile    # Live log
+rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 0  # Unkey
 ```
 
 ### Common Issues
 
-**No /dev/ttyUSB0:**
+**Audio in use by modem:**
+- Status page shows "Audio in use by modem" - click to temporarily stop modem for level check
+- Modem automatically restarts after 5 seconds
+
+**No serial port detected:**
 - Check USB cable connection
-- Verify Digirig is powered (LED lit)
+- Verify Digirig LED is lit
 - Run `dmesg | tail` after plugging in
 
-**CAT command fails:**
-- Verify baud rate matches radio (G90 uses 19200)
-- Check user is in dialout group
-- Try `rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 f`
-
-**No audio device:**
-- Run `arecord -l` to find device number
-- Adjust --input-device and --output-device in freedvtnc2 command
-
 **Radio not keying:**
+- Verify rigctld is running: `systemctl status rigctld`
 - Test PTT manually: `rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 1`
-- Check G90 is in correct mode (USB-D for data)
-- Verify rigctld is running on port 4532
+- For VOX: check radio VOX settings and audio levels
 
-**WiFi AP not visible (pre-built image):**
-- Wait 60 seconds after power on
-- Check Pi LEDs (solid green = booted)
-- Power cycle Pi
+**Can't decode signals:**
+- Verify both stations using same FreeDV mode
+- Check audio levels: target -10 to -5 dB on signals
+- Try DATAC4 for weak signal conditions
 
-**Sideband won't connect (pre-built image):**
-- Verify connected to ReticulumHF-Setup WiFi
-- Check rnsd running: `ssh pi@192.168.4.1 "systemctl status reticulumhf-rnsd"`
-- Verify port 4242: `ssh pi@192.168.4.1 "ss -tlnp | grep 4242"`
+---
 
-## Verified Hardware
+## Architecture
 
-| Component | Model | Notes |
-|-----------|-------|-------|
-| Computer | Raspberry Pi 4 (4GB) | |
-| Radio | Xiegu G90 | Hamlib 3088, PTT via RTS |
-| Radio | Yaesu FT-818 | Hamlib 1020 (use FT-817), PTT via RTS |
-| Radio | (tr)uSDX | VOX mode (no CAT PTT) |
-| Interface | Digirig Mobile | CAT + Audio |
-| Interface | Digirig Lite | Audio only (use VOX) |
-| Phone App | Sideband (Android) | Port 4242 |
-| Desktop App | MeshChat | Port 8001, KISS framing |
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Client (Sideband/MeshChat/NomadNet)                            │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │ TCP (4242 or 8001)
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Raspberry Pi (ReticulumHF Gateway)                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │    rnsd     │  │ freedvtnc2  │  │  rigctld    │              │
+│  │  (TCP:4242) │  │  (TCP:8001) │  │  (TCP:4532) │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │ USB (Audio + CAT)
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Digirig Mobile/Lite                                            │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │ Audio + PTT
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  HF Radio (G90 / FT-818 / truSDX)                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## References
 
-Software:
-- Reticulum Manual: https://markqvist.github.io/Reticulum/manual/
-- codec2 Data Modes: https://github.com/drowe67/codec2/blob/main/README_data.md
-- freedvtnc2: https://github.com/xssfox/freedvtnc2
-- Sideband: https://github.com/markqvist/Sideband
-- MeshChat: https://github.com/liamcottle/meshtastic-meshchat
-- NomadNet: https://github.com/markqvist/NomadNet
-- Hamlib Supported Radios: https://github.com/Hamlib/Hamlib/wiki/Supported-Radios
-
-Propagation:
-- prop.kc2g.com: https://prop.kc2g.com/ - Real-time MUF/foF2 maps
-- VOACAP Online: https://www.voacap.com/hf/ - HF propagation prediction
-- HamQSL Solar Data: https://www.hamqsl.com/solar.html - Current solar indices
+- [Reticulum Manual](https://markqvist.github.io/Reticulum/manual/)
+- [codec2 Data Modes](https://github.com/drowe67/codec2/blob/main/README_data.md)
+- [freedvtnc2](https://github.com/xssfox/freedvtnc2)
+- [Sideband](https://github.com/markqvist/Sideband)
+- [MeshChat](https://github.com/liamcottle/meshtastic-meshchat)
+- [Hamlib Supported Radios](https://github.com/Hamlib/Hamlib/wiki/Supported-Radios)
 
 ## License
 
