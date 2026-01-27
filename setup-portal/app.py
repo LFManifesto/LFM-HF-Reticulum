@@ -18,7 +18,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from hardware import (
     load_radios, detect_serial_ports, detect_audio_devices,
     find_digirig, test_cat_connection, test_ptt, release_ptt,
-    set_audio_levels, get_system_info
+    set_audio_levels, get_audio_controls, get_system_info
 )
 
 # Configuration constants
@@ -419,6 +419,18 @@ def api_set_audio():
 
     result = set_audio_levels(card, speaker, mic)
     return jsonify(result)
+
+
+@app.route("/api/audio-controls/<int:card>")
+def api_audio_controls(card):
+    """API endpoint to enumerate available audio controls for a card."""
+    controls = get_audio_controls(card)
+    return jsonify({
+        "success": True,
+        "card": card,
+        "controls": controls,
+        "hint": "If no controls found, audio levels must be set in radio menu"
+    })
 
 
 def validate_wifi_settings(ssid: str, password: str) -> Tuple[bool, str]:
