@@ -6,9 +6,13 @@ Runs as a captive portal on first boot for zero-config setup.
 
 import json
 import os
+import shutil
 import subprocess
 import time
+from datetime import datetime
 from pathlib import Path
+from typing import Optional, Tuple
+
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 
 from hardware import (
@@ -16,6 +20,10 @@ from hardware import (
     find_digirig, test_cat_connection, test_ptt, release_ptt,
     set_audio_levels, get_system_info
 )
+
+# Configuration constants
+FREEDVTNC2_STARTUP_TIMEOUT_SECS = 15  # Wait for freedvtnc2 to start listening
+FREEDVTNC2_POLL_INTERVAL_SECS = 0.5   # Check interval during startup
 
 app = Flask(__name__)
 
@@ -34,8 +42,16 @@ def add_cache_headers(response):
 
 # Configuration paths
 CONFIG_DIR = Path(__file__).parent.parent / "configs"
-RETICULUM_CONFIG = Path.home() / ".reticulum" / "config"
-SETUP_COMPLETE_FLAG = Path("/etc/reticulumhf/.setup_complete")
+RETICULUMHF_DIR = Path("/etc/reticulumhf")
+RETICULUMHF_CONFIG_ENV = RETICULUMHF_DIR / "config.env"
+RETICULUMHF_BACKUPS_DIR = RETICULUMHF_DIR / "backups"
+SETUP_COMPLETE_FLAG = RETICULUMHF_DIR / ".setup_complete"
+PI_HOME = Path("/home/pi")
+RETICULUM_DIR = PI_HOME / ".reticulum"
+RETICULUM_CONFIG = RETICULUM_DIR / "config"
+FREEDVTNC2_BIN = PI_HOME / ".local/bin/freedvtnc2"
+HOSTAPD_CONF = Path("/etc/hostapd/hostapd.conf")
+ASOUND_CONF = Path("/etc/asound.conf")
 
 
 def load_peers() -> dict:
@@ -52,27 +68,99 @@ def is_setup_complete() -> bool:
     return SETUP_COMPLETE_FLAG.exists()
 
 
+def get_radio_by_id(radio_id: str) -> Optional[dict]:
+    """
+    Look up radio configuration by ID.
+    Returns radio dict or None if not found.
+    """
+    radios = load_radios()
+    return next((r for r in radios if r["id"] == radio_id), None)
+
+
+def backup_existing_configs() -> dict:
+    """
+    Backup existing configuration files before overwriting.
+    Returns dict with backup paths or None if no backup needed.
+    """
+    RETICULUMHF_BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backups = {}
+
+    # Backup config.env if it exists
+    if RETICULUMHF_CONFIG_ENV.exists():
+        backup_path = RETICULUMHF_BACKUPS_DIR / f"config.env.{timestamp}"
+        try:
+            shutil.copy2(RETICULUMHF_CONFIG_ENV, backup_path)
+            backups["config_env"] = str(backup_path)
+        except Exception:
+            pass
+
+    # Backup Reticulum config if it exists
+    reticulum_config = RETICULUM_CONFIG
+    if reticulum_config.exists():
+        backup_path = backup_dir / f"reticulum_config.{timestamp}"
+        try:
+            shutil.copy2(reticulum_config, backup_path)
+            backups["reticulum_config"] = str(backup_path)
+        except Exception:
+            pass
+
+    return backups
+
+
+def validate_config_env(config_path: Optional[Path] = None) -> Tuple[bool, str, dict]:
+    """
+    Validate that config.env exists and contains required variables.
+    Returns (is_valid, error_message, config_dict).
+    """
+    if config_path is None:
+        config_path = RETICULUMHF_CONFIG_ENV
+
+    if not config_path.exists():
+        return False, "config.env not found", {}
+
+    required_keys = ["RADIO_ID", "AUDIO_CARD", "FREEDVTNC2_CMD"]
+    config = {}
+
+    try:
+        content = config_path.read_text()
+        for line in content.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, _, value = line.partition('=')
+                # Remove quotes from value
+                value = value.strip('"').strip("'")
+                config[key.strip()] = value
+    except Exception as e:
+        return False, f"Failed to read config.env: {e}", {}
+
+    # Check required keys
+    missing = [k for k in required_keys if not config.get(k)]
+    if missing:
+        return False, f"Missing required config: {', '.join(missing)}", config
+
+    # Validate FREEDVTNC2_CMD is not empty
+    if not config.get("FREEDVTNC2_CMD", "").strip():
+        return False, "FREEDVTNC2_CMD is empty", config
+
+    return True, "", config
+
+
 def generate_reticulum_config(radio_id: str, serial_port: str, audio_card: int,
-                               peers_config: dict = None,
                                ifac_name: str = "", ifac_pass: str = "") -> str:
     """
     Generate Reticulum configuration file content.
-    Configures interfaces: HF (freedvtnc2), selected TCP peers, and I2P.
+    Configures HF interface via freedvtnc2.
 
-    peers_config format:
-        {
-            'lfm_i2p': True/False   # Lightfighter I2P bridge
-        }
-    ifac_name: Optional IFAC network name for gateway security
-    ifac_pass: Optional IFAC passphrase for gateway security
+    Args:
+        radio_id: Radio identifier from radios.json
+        serial_port: Serial port for CAT control (or empty for VOX)
+        audio_card: ALSA audio card number
+        ifac_name: Optional IFAC network name for gateway security
+        ifac_pass: Optional IFAC passphrase for gateway security
     """
-    if peers_config is None:
-        peers_config = {'lfm_i2p': False}
-
-    radios = load_radios()
-    radio = next((r for r in radios if r["id"] == radio_id), None)
-    peers_data = load_peers()
-
+    radio = get_radio_by_id(radio_id)
     if not radio:
         raise ValueError(f"Unknown radio: {radio_id}")
 
@@ -123,8 +211,6 @@ def generate_reticulum_config(radio_id: str, serial_port: str, audio_card: int,
         "",
     ])
 
-    # I2P support removed - HF radio only for now
-
     return "\n".join(config_lines)
 
 
@@ -137,7 +223,7 @@ def get_freedvtnc2_device_id(alsa_card: int) -> int:
     # Run freedvtnc2 --list-audio-devices and find the matching device
     try:
         result = subprocess.run(
-            ["/home/pi/.local/bin/freedvtnc2", "--list-audio-devices"],
+            [str(FREEDVTNC2_BIN), "--list-audio-devices"],
             capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0:
@@ -165,9 +251,7 @@ def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int
         audio_card: ALSA audio card number
         freedv_mode: FreeDV data mode (DATAC1, DATAC3, DATAC4)
     """
-    radios = load_radios()
-    radio = next((r for r in radios if r["id"] == radio_id), None)
-
+    radio = get_radio_by_id(radio_id)
     if not radio:
         raise ValueError(f"Unknown radio: {radio_id}")
 
@@ -189,7 +273,7 @@ def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int
     rigctld_port = "0" if use_vox else "4532"
 
     cmd_parts = [
-        "/home/pi/.local/bin/freedvtnc2",
+        str(FREEDVTNC2_BIN),
         "--no-cli",
         f"--input-device {device_id}",
         f"--output-device {device_id}",
@@ -209,9 +293,7 @@ def generate_rigctld_command(radio_id: str, serial_port: str) -> str:
     """
     Generate rigctld launch command.
     """
-    radios = load_radios()
-    radio = next((r for r in radios if r["id"] == radio_id), None)
-
+    radio = get_radio_by_id(radio_id)
     if not radio:
         raise ValueError(f"Unknown radio: {radio_id}")
 
@@ -339,7 +421,7 @@ def api_set_audio():
     return jsonify(result)
 
 
-def validate_wifi_settings(ssid: str, password: str) -> tuple:
+def validate_wifi_settings(ssid: str, password: str) -> Tuple[bool, str]:
     """
     Validate WiFi SSID and password.
     Returns (is_valid, error_message)
@@ -489,16 +571,24 @@ def api_complete_setup():
     audio_card = data.get("audio_card")
     freedv_mode = data.get("freedv_mode", "DATAC1")
 
-    # Handle peers format from UI checkboxes
-    peers_config = data.get("peers", {})
-    # If old format is passed, convert it
-    if not peers_config and "enable_i2p" in data:
-        peers_config = {
-            'lfm_i2p': data.get("enable_i2p", True)
-        }
-
-    if not all([radio_id, serial_port, audio_card is not None]):
+    if not all([radio_id, audio_card is not None]):
         return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+    # Validate serial_port requirement based on radio's PTT method
+    radios = load_radios()
+    radio = next((r for r in radios if r["id"] == radio_id), None)
+    if not radio:
+        return jsonify({"success": False, "error": f"Unknown radio: {radio_id}"}), 400
+
+    ptt_method = radio.get("ptt_method", "")
+    is_vox_radio = ptt_method.upper() == "VOX"
+
+    # Non-VOX radios require a serial port for CAT control
+    if not is_vox_radio and not serial_port:
+        return jsonify({
+            "success": False,
+            "error": "Serial port required for CAT control. Select a port or use a VOX-capable radio."
+        }), 400
 
     # Get IFAC security settings
     ifac_name = data.get("ifac_name", "")
@@ -523,9 +613,12 @@ def api_complete_setup():
         wifi_ssid = current_ssid
 
     try:
+        # Backup existing configs before overwriting (prevents data loss)
+        config_backups = backup_existing_configs()
+
         # Generate Reticulum config
         reticulum_config = generate_reticulum_config(
-            radio_id, serial_port, audio_card, peers_config,
+            radio_id, serial_port, audio_card,
             ifac_name=ifac_name, ifac_pass=ifac_pass
         )
 
@@ -570,6 +663,11 @@ RETICULUMHF_AP_PASS={wifi_password}
         with open(env_dir / "config.env", "w") as f:
             f.write(env_content)
 
+        # Validate the config we just wrote
+        config_valid, config_error, _ = validate_config_env(env_dir / "config.env")
+        if not config_valid:
+            return jsonify({"success": False, "error": f"Config validation failed: {config_error}"}), 500
+
         # Mark setup as complete
         SETUP_COMPLETE_FLAG.parent.mkdir(parents=True, exist_ok=True)
         SETUP_COMPLETE_FLAG.touch()
@@ -581,23 +679,36 @@ RETICULUMHF_AP_PASS={wifi_password}
             # Restart hostapd to apply new SSID
             subprocess.run(["systemctl", "restart", "hostapd"], capture_output=True)
 
+        # Determine if using VOX mode (no CAT control needed)
+        # Note: radio and is_vox_radio already loaded during validation above
+        use_vox = is_vox_radio or (not serial_port)
+
         # Enable and start the HF stack services
         subprocess.run(["systemctl", "daemon-reload"], capture_output=True)
-        subprocess.run(["systemctl", "enable", "rigctld", "freedvtnc2", "reticulumhf-rnsd"], capture_output=True)
+
+        if use_vox:
+            # VOX mode - only enable freedvtnc2 and rnsd (no rigctld needed)
+            subprocess.run(["systemctl", "enable", "freedvtnc2", "reticulumhf-rnsd"], capture_output=True)
+            subprocess.run(["systemctl", "disable", "rigctld"], capture_output=True)
+        else:
+            # CAT mode - enable all services including rigctld
+            subprocess.run(["systemctl", "enable", "rigctld", "freedvtnc2", "reticulumhf-rnsd"], capture_output=True)
 
         # Start radio services FIRST (freedvtnc2 must be listening before rnsd connects)
-        subprocess.run(["systemctl", "start", "rigctld"], capture_output=True)
+        if not use_vox:
+            subprocess.run(["systemctl", "start", "rigctld"], capture_output=True)
         subprocess.run(["systemctl", "start", "freedvtnc2"], capture_output=True)
 
         # Wait for freedvtnc2 to be listening on KISS port before restarting rnsd
-        for _ in range(10):
+        max_checks = int(FREEDVTNC2_STARTUP_TIMEOUT_SECS / FREEDVTNC2_POLL_INTERVAL_SECS)
+        for _ in range(max_checks):
             result = subprocess.run(
                 ["ss", "-tln", "sport", "=", "8001"],
                 capture_output=True, text=True
             )
             if "8001" in result.stdout:
                 break
-            time.sleep(0.5)
+            time.sleep(FREEDVTNC2_POLL_INTERVAL_SECS)
 
         # Now restart rnsd to connect to freedvtnc2
         subprocess.run(["systemctl", "restart", "reticulumhf-rnsd"], capture_output=True)
@@ -889,14 +1000,15 @@ def api_restart_services():
         subprocess.run(["systemctl", "restart", "freedvtnc2"], capture_output=True, timeout=10)
 
         # Wait for freedvtnc2 to be listening
-        for _ in range(10):
+        max_checks = int(FREEDVTNC2_STARTUP_TIMEOUT_SECS / FREEDVTNC2_POLL_INTERVAL_SECS)
+        for _ in range(max_checks):
             result = subprocess.run(
                 ["ss", "-tln", "sport", "=", "8001"],
                 capture_output=True, text=True
             )
             if "8001" in result.stdout:
                 break
-            time.sleep(0.5)
+            time.sleep(FREEDVTNC2_POLL_INTERVAL_SECS)
 
         # Now restart rnsd
         subprocess.run(["systemctl", "restart", "reticulumhf-rnsd"], capture_output=True, timeout=10)
@@ -945,8 +1057,9 @@ def api_restore_defaults():
 def api_reset_setup():
     """API endpoint to reset setup and allow reconfiguration."""
     try:
-        # 1. Stop radio services first
+        # 1. Stop and disable radio services
         subprocess.run(["systemctl", "stop", "rigctld", "freedvtnc2"], capture_output=True)
+        subprocess.run(["systemctl", "disable", "rigctld", "freedvtnc2"], capture_output=True)
 
         # 2. Remove setup complete flag
         if SETUP_COMPLETE_FLAG.exists():

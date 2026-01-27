@@ -1,8 +1,8 @@
 [Unit]
 Description=FreeDV TNC for ReticulumHF
 After=network.target rigctld.service
+# Use Wants instead of Requires so VOX mode works without rigctld
 Wants=rigctld.service
-Requires=rigctld.service
 ConditionPathExists=/etc/reticulumhf/.setup_complete
 ConditionPathExists=/etc/reticulumhf/config.env
 # Restart limits - must be in [Unit] section

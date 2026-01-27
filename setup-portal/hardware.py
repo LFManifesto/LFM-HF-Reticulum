@@ -8,6 +8,7 @@ import subprocess
 import re
 import json
 import os
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -385,7 +386,6 @@ def test_ptt(port: str, radio_id: str) -> dict:
 
     base_cmd.extend(["--set-conf=" + ",".join(conf_parts)])
 
-    import time
     keyed = False
 
     try:
@@ -407,8 +407,8 @@ def test_ptt(port: str, radio_id: str) -> dict:
         try:
             cmd_off = base_cmd + ["T", "0"]
             subprocess.run(cmd_off, capture_output=True, text=True, timeout=5)
-        except:
-            pass
+        except Exception:
+            pass  # Swallow errors during PTT release - safety critical
 
     if keyed:
         return {
