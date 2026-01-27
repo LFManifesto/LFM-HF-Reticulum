@@ -187,7 +187,7 @@ echo "[5/9] Configuring hostapd..."
 cat > /etc/hostapd/hostapd.conf << 'HOSTAPD'
 interface=wlan0
 driver=nl80211
-ssid=ReticulumHF-Setup
+ssid=ReticulumHF
 hw_mode=g
 channel=7
 wmm_enabled=0
@@ -315,7 +315,7 @@ echo "Image contains:"
 echo "  - Hostname: reticulumhf"
 echo "  - User: pi / Password: reticulumhf"
 echo "  - SSH: enabled"
-echo "  - WiFi AP: ReticulumHF-Setup (hostapd + dnsmasq)"
+echo "  - WiFi AP: ReticulumHF (hostapd + dnsmasq)"
 echo "  - codec2, RNS, NomadNet, freedvtnc2: pre-installed"
 echo ""
 echo "Flash to SD card with Raspberry Pi Imager"
