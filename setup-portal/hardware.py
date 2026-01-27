@@ -9,14 +9,297 @@ import re
 import json
 import os
 import time
+import threading
+import math
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, List
+from collections import deque
 
 # Path to radio configurations
 RADIOS_CONFIG = Path(__file__).parent.parent / "configs" / "radios.json"
 
 # Mock mode for testing without hardware
 MOCK_MODE = os.environ.get("RETICULUMHF_MOCK", "0") == "1"
+
+
+class ALSALevelMonitor:
+    """
+    Monitor ALSA audio input levels using arecord.
+    No external Python dependencies - uses subprocess.
+    """
+
+    def __init__(self, card: int, sample_rate: int = 48000):
+        self.card = card
+        self.sample_rate = sample_rate
+        self.running = False
+        self._process = None
+        self._thread = None
+        self._lock = threading.Lock()
+        self._levels = deque(maxlen=50)  # ~1 second at 20Hz
+        self.current_level_db = -60.0
+        self.peak_level_db = -60.0
+
+    def start(self) -> bool:
+        """Start monitoring audio levels."""
+        if self.running:
+            return True
+
+        try:
+            # Use arecord with VU meter output
+            cmd = [
+                "arecord",
+                "-D", f"hw:{self.card},0",
+                "-f", "S16_LE",
+                "-r", str(self.sample_rate),
+                "-c", "1",
+                "-t", "raw",
+                "-vv",  # Verbose output includes level info
+                "/dev/null"
+            ]
+            self._process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1
+            )
+            self.running = True
+            self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
+            self._thread.start()
+            return True
+        except Exception as e:
+            print(f"Failed to start audio monitor: {e}")
+            return False
+
+    def stop(self):
+        """Stop monitoring."""
+        self.running = False
+        if self._process:
+            try:
+                self._process.terminate()
+                self._process.wait(timeout=2)
+            except Exception:
+                self._process.kill()
+            self._process = None
+
+    def _monitor_loop(self):
+        """Parse arecord VU meter output for level info."""
+        # arecord -vv outputs lines like: "#+     | 04%" or "####+  | 25%"
+        # The percentage at the end is what we need
+        pct_pattern = re.compile(r'\|\s*(\d+)%')
+
+        while self.running and self._process:
+            try:
+                line = self._process.stderr.readline()
+                if not line:
+                    break
+
+                # Parse percentage from arecord -vv output
+                # Format: "#+                                                 | 04%"
+                match = pct_pattern.search(line)
+                if match:
+                    pct = int(match.group(1))
+                    # Convert percentage to dB (0% = -60dB, 100% = 0dB)
+                    if pct > 0:
+                        # pct is 0-100, representing 0-100% of full scale
+                        level_db = 20 * math.log10(pct / 100.0)
+                    else:
+                        level_db = -60.0
+
+                    with self._lock:
+                        self.current_level_db = max(-60.0, min(0.0, level_db))
+                        self.peak_level_db = max(
+                            self.peak_level_db * 0.95,  # Slow decay
+                            self.current_level_db
+                        )
+                        self._levels.append(self.current_level_db)
+
+            except Exception:
+                pass
+
+    def get_levels(self) -> Dict:
+        """Get current audio levels (thread-safe)."""
+        with self._lock:
+            avg = sum(self._levels) / len(self._levels) if self._levels else -60.0
+            return {
+                "rms_db": round(self.current_level_db, 1),
+                "peak_db": round(self.peak_level_db, 1),
+                "average_db": round(avg, 1),
+                "status": self._get_level_status(self.current_level_db)
+            }
+
+    def _get_level_status(self, level_db: float) -> Dict:
+        """Get status info for the current level."""
+        if level_db > -3:
+            return {"state": "high", "message": "Too high - reduce radio output", "color": "#ef4444"}
+        elif level_db > -10:
+            return {"state": "good", "message": "Good level for FreeDV", "color": "#4ade80"}
+        elif level_db > -20:
+            return {"state": "low", "message": "Low - increase radio output", "color": "#fbbf24"}
+        else:
+            return {"state": "very_low", "message": "Very low or no signal", "color": "#666666"}
+
+
+# Global audio monitor instance
+_audio_monitor: Optional[ALSALevelMonitor] = None
+
+
+def start_audio_monitor(card: int) -> Dict:
+    """Start the audio level monitor for a given card."""
+    global _audio_monitor
+
+    # Check if device is in use
+    if is_audio_device_busy(card):
+        return {
+            "success": False,
+            "error": "Audio device in use by modem",
+            "device_busy": True
+        }
+
+    if _audio_monitor and _audio_monitor.running:
+        _audio_monitor.stop()
+
+    _audio_monitor = ALSALevelMonitor(card)
+    if _audio_monitor.start():
+        return {"success": True, "message": f"Monitoring audio card {card}"}
+    else:
+        return {"success": False, "error": "Failed to start audio monitor"}
+
+
+def stop_audio_monitor() -> Dict:
+    """Stop the audio level monitor."""
+    global _audio_monitor
+
+    if _audio_monitor:
+        _audio_monitor.stop()
+        _audio_monitor = None
+    return {"success": True}
+
+
+def get_audio_levels() -> Dict:
+    """Get current audio levels from the monitor."""
+    global _audio_monitor
+
+    if not _audio_monitor or not _audio_monitor.running:
+        return {"success": False, "error": "Monitor not running"}
+
+    levels = _audio_monitor.get_levels()
+    return {"success": True, "levels": levels}
+
+
+def is_audio_device_busy(card: int) -> bool:
+    """Check if the audio device is in use by another process (e.g., freedvtnc2)."""
+    try:
+        result = subprocess.run(
+            ["fuser", f"/dev/snd/pcmC{card}D0c"],
+            capture_output=True, timeout=5
+        )
+        return result.returncode == 0  # 0 means something is using it
+    except Exception:
+        return False
+
+
+def get_audio_level_single(card: int) -> Dict:
+    """
+    Get a single audio level reading using arecord.
+    Useful for one-off checks without starting a continuous monitor.
+    """
+    # Check if device is in use
+    if is_audio_device_busy(card):
+        return {
+            "success": False,
+            "error": "Audio device in use by modem",
+            "device_busy": True
+        }
+
+    try:
+        # Record a brief sample and analyze
+        cmd = [
+            "arecord",
+            "-D", f"hw:{card},0",
+            "-f", "S16_LE",
+            "-r", "48000",
+            "-c", "1",
+            "-d", "1",  # 1 second
+            "-t", "raw",
+            "-q",  # Quiet
+            "-"  # Output to stdout
+        ]
+        result = subprocess.run(cmd, capture_output=True, timeout=5)
+
+        if result.returncode != 0:
+            return {"success": False, "error": "Failed to capture audio"}
+
+        # Analyze the raw audio data
+        data = result.stdout
+        if len(data) < 100:
+            return {"success": False, "error": "No audio data captured"}
+
+        # Parse as 16-bit signed samples
+        samples = []
+        for i in range(0, len(data) - 1, 2):
+            sample = int.from_bytes(data[i:i+2], byteorder='little', signed=True)
+            samples.append(abs(sample))
+
+        if not samples:
+            return {"success": False, "error": "No samples parsed"}
+
+        # Calculate RMS and peak
+        rms = math.sqrt(sum(s*s for s in samples) / len(samples))
+        peak = max(samples)
+
+        rms_db = 20 * math.log10(rms / 32768.0) if rms > 0 else -60.0
+        peak_db = 20 * math.log10(peak / 32768.0) if peak > 0 else -60.0
+
+        return {
+            "success": True,
+            "rms_db": round(max(-60.0, rms_db), 1),
+            "peak_db": round(max(-60.0, peak_db), 1)
+        }
+
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "Audio capture timeout"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def set_single_audio_control(card: int, control: str, level: int) -> Dict:
+    """
+    Set a single ALSA mixer control to a specific level.
+    Level should be 0-100 (percentage).
+    """
+    if not 0 <= level <= 100:
+        return {"success": False, "error": "Level must be 0-100"}
+
+    try:
+        result = subprocess.run(
+            ["amixer", "-c", str(card), "sset", control, f"{level}%"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            return {"success": True, "control": control, "level": level}
+        else:
+            return {"success": False, "error": result.stderr.strip() or "Failed to set level"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def get_single_audio_control(card: int, control: str) -> Dict:
+    """Get the current level of a specific ALSA mixer control."""
+    try:
+        result = subprocess.run(
+            ["amixer", "-c", str(card), "sget", control],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            # Parse percentage from output like "Playback 64 [75%]"
+            match = re.search(r'\[(\d+)%\]', result.stdout)
+            if match:
+                return {"success": True, "control": control, "level": int(match.group(1))}
+            return {"success": False, "error": "Could not parse level from output"}
+        return {"success": False, "error": result.stderr.strip() or "Control not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # Mock data for testing
 MOCK_SERIAL_PORTS = [
@@ -632,6 +915,84 @@ def set_audio_levels(card: int, speaker_pct: int = 64, mic_pct: int = 75) -> dic
         return {"success": False, "error": "Timeout setting audio levels"}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+def get_radio_audio_guidance(radio_id: str, audio_card: Optional[int] = None) -> dict:
+    """
+    Get audio configuration guidance for a specific radio.
+    Returns guidance based on the radio's audio_settings from radios.json.
+
+    Args:
+        radio_id: Radio identifier from radios.json
+        audio_card: Optional ALSA card number to check available controls
+    """
+    radios = load_radios()
+    radio = next((r for r in radios if r["id"] == radio_id), None)
+
+    if not radio:
+        return {
+            "found": False,
+            "error": f"Unknown radio: {radio_id}"
+        }
+
+    audio_interface = radio.get("audio_interface", "unknown")
+    audio_settings = radio.get("audio_settings", {})
+
+    guidance = {
+        "found": True,
+        "radio_name": f"{radio['manufacturer']} {radio['model']}",
+        "audio_interface": audio_interface,
+        "has_alsa_control": audio_interface == "external",
+        "instructions": [],
+        "freedv_target": "-5 dB (acceptable: -10 to 0 dB)"
+    }
+
+    if audio_interface == "builtin":
+        # Built-in USB audio - no ALSA mixer controls
+        guidance["has_alsa_control"] = False
+        guidance["instructions"] = [
+            "This radio has built-in USB audio - connect directly to Pi via USB",
+            "Audio levels are controlled via the radio's menu ONLY",
+            "The Pi cannot adjust input levels for this radio"
+        ]
+        if audio_settings.get("radio_rx_menu"):
+            guidance["instructions"].append(f"To adjust RX audio: {audio_settings['radio_rx_menu']}")
+        if audio_settings.get("radio_tx_menu"):
+            guidance["instructions"].append(f"To adjust TX audio: {audio_settings['radio_tx_menu']}")
+        if audio_settings.get("freedv_notes"):
+            guidance["instructions"].append(audio_settings["freedv_notes"])
+
+    elif audio_interface == "external":
+        # External interface (Digirig/SignaLink) - ALSA controls available
+        guidance["has_alsa_control"] = True
+        guidance["recommended_alsa_rx"] = audio_settings.get("recommended_alsa_rx", 75)
+        guidance["recommended_alsa_tx"] = audio_settings.get("recommended_alsa_tx", 70)
+        guidance["instructions"] = [
+            "Audio is controlled via ALSA mixer AND radio settings",
+            f"Recommended ALSA Capture: {guidance['recommended_alsa_rx']}%",
+            f"Recommended ALSA Playback: {guidance['recommended_alsa_tx']}%"
+        ]
+        if audio_settings.get("radio_rx_menu"):
+            guidance["instructions"].append(f"Radio RX setting: {audio_settings['radio_rx_menu']}")
+        if audio_settings.get("radio_tx_menu"):
+            guidance["instructions"].append(f"Radio TX setting: {audio_settings['radio_tx_menu']}")
+        if audio_settings.get("freedv_notes"):
+            guidance["instructions"].append(audio_settings["freedv_notes"])
+
+    # Check actual ALSA controls if card number provided
+    if audio_card is not None:
+        controls = get_audio_controls(audio_card)
+        guidance["alsa_controls_found"] = len(controls["all"]) > 0
+        guidance["alsa_playback_controls"] = controls["playback"]
+        guidance["alsa_capture_controls"] = controls["capture"]
+
+        if not controls["all"]:
+            guidance["instructions"].append(
+                "WARNING: No ALSA mixer controls found on this device - "
+                "all audio adjustment must be done via radio menu"
+            )
+
+    return guidance
 
 
 def get_system_info() -> dict:

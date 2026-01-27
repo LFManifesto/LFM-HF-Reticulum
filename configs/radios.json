@@ -1,6 +1,7 @@
 {
-  "version": "1.0.1",
+  "version": "1.2.0",
   "updated": "2026-01-27",
+  "notes": "Audio settings for ReticulumHF Pi gateway. freedvtnc2 uses ALSA for audio I/O. Target RX level: -5 dB.",
   "radios": [
     {
       "id": "xiegu_g90",
@@ -9,6 +10,17 @@
       "hamlib_id": 3088,
       "baud_rate": 19200,
       "ptt_method": "RTS",
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig",
+        "rx_control": "Digirig ALSA mixer (Capture/Mic) + Radio Menu 6",
+        "tx_control": "Digirig ALSA mixer (Speaker/PCM) + Radio Menu 5",
+        "radio_rx_menu": "Menu 6 (AUX OUT): 10-15",
+        "radio_tx_menu": "Menu 5 (AUX IN): 8-12",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "If freedvtnc2 shows input < -10 dB, increase AUX OUT (Menu 6) on radio"
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -38,6 +50,19 @@
       "model": "G106",
       "hamlib_id": 3088,
       "baud_rate": 19200,
+      "ptt_method": "RTS",
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig_or_de19",
+        "connector": "8-pin Mini DIN (ACC port)",
+        "rx_control": "External interface (DE-19/Digirig) + software",
+        "tx_control": "External interface (DE-19/Digirig) + software",
+        "radio_rx_menu": "None - G106 has no internal audio level menus",
+        "radio_tx_menu": "None - G106 has no internal audio level menus",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "Audio levels controlled entirely by external interface and Pi software. Same ACC pinout as G90."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -48,15 +73,16 @@
       },
       "setup_guide": {
         "steps": [
-          {"setting": "Mode", "value": "USB", "how": "Press MODE button"},
+          {"setting": "Mode", "value": "U-D (USB Digital)", "how": "Press MODE button"},
           {"setting": "AGC", "value": "OFF", "how": "Menu setting"},
           {"setting": "CAT Baud", "value": "19200", "how": "Menu → CAT settings"}
         ],
-        "note": "Similar to G90. Ensure CAT is enabled in menu."
+        "note": "Requires DE-19 or Digirig. Same 8-pin mini DIN ACC port as G90.",
+        "sources": ["https://qrper.com/2023/06/an-in-depth-review-of-the-xiegu-g106-qrp-hf-transceiver/"]
       },
-      "notes": "Shares backend with G90.",
+      "notes": "5W QRP. No built-in USB audio - requires DE-19/Digirig. Same ACC pinout as G90.",
       "tested": false,
-      "power_watts": 10
+      "power_watts": 5
     },
     {
       "id": "xiegu_x6100",
@@ -64,25 +90,40 @@
       "model": "X6100",
       "hamlib_id": 3087,
       "baud_rate": 19200,
+      "ptt_method": "CAT",
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "connector": "USB-C (DEV port)",
+        "alsa_device": "USB Audio Device",
+        "rx_control": "Radio menu LINEOUTLV (no ALSA mixer)",
+        "tx_control": "Radio menu LINEINLV (no ALSA mixer)",
+        "radio_rx_menu": "RADIO SETTING1 → LINE OUT LV: 30-50",
+        "radio_tx_menu": "RADIO SETTING1 → LINEINLV: adjust for ALC ≤ 50",
+        "freedv_notes": "Built-in USB audio has no ALSA mixer controls. Adjust levels via radio menu. If input < -10 dB, increase LINE OUT LV."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
         "parity": "none",
         "handshake": "none",
-        "rts_state": "OFF",
-        "dtr_state": "OFF"
+        "rts_state": "ON",
+        "dtr_state": "ON"
       },
       "setup_guide": {
         "steps": [
-          {"setting": "Mode", "value": "USB", "how": "Touch mode selector"},
+          {"setting": "Mode", "value": "USB-D", "how": "Touch mode selector → USB-D"},
+          {"setting": "LINEINLV", "value": "Adjust for ALC ≤ 50", "how": "RADIO SETTING1 → LINEINLV"},
+          {"setting": "LINE OUT LV", "value": "30-50", "how": "RADIO SETTING1 → LINE OUT LV"},
           {"setting": "AGC", "value": "OFF", "how": "Settings menu"},
           {"setting": "CAT", "value": "Enable", "how": "Settings → CAT"}
         ],
-        "note": "Portable SDR with touchscreen. Connect via USB-C."
+        "note": "Built-in USB audio via USB-C DEV port. Single cable for CAT + audio.",
+        "sources": ["https://oh8stn.org/blog/2022/03/05/xiegu-x6100-winlink-express-setup/"]
       },
-      "notes": "Portable SDR. Requires Hamlib 4.4+.",
+      "notes": "Portable SDR. Built-in USB audio. Requires Hamlib 4.4+. Keep ALC ≤ 50 for digital.",
       "tested": false,
-      "power_watts": 5
+      "power_watts": 10
     },
     {
       "id": "icom_ic7300",
@@ -90,6 +131,17 @@
       "model": "IC-7300",
       "hamlib_id": 3073,
       "baud_rate": 115200,
+      "ptt_method": "CAT",
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "alsa_device": "USB Audio CODEC",
+        "rx_control": "Radio menu only (no ALSA mixer)",
+        "tx_control": "Radio menu only (no ALSA mixer)",
+        "radio_rx_menu": "Menu → Connectors → ACC/USB AF Output Level: 30-50%",
+        "radio_tx_menu": "Menu → Connectors → USB MOD Level: 50%",
+        "freedv_notes": "Built-in USB audio has NO ALSA mixer controls. All levels via radio menu. If freedvtnc2 shows input < -10 dB, increase ACC/USB AF Output Level."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -103,13 +155,13 @@
           {"setting": "DATA MOD", "value": "USB", "how": "Menu → Connectors → DATA MOD"},
           {"setting": "CI-V Baud Rate", "value": "115200", "how": "Menu → Connectors → CI-V → Baud Rate"},
           {"setting": "CI-V USB Port", "value": "Unlink from Remote", "how": "Menu → Connectors → CI-V"},
-          {"setting": "CI-V USB Baud", "value": "115200", "how": "Menu → Connectors → CI-V (page 2)"},
+          {"setting": "ACC/USB AF Output", "value": "30-50%", "how": "Menu → Connectors → ACC/USB AF Output Level"},
           {"setting": "Filter Width", "value": "3000 Hz", "how": "Touch BW → set to 3.0k"}
         ],
-        "note": "Install Icom USB driver BEFORE connecting. Power on radio first, then start software.",
-        "sources": ["https://wa7ewc.wordpress.com/2016/04/27/icom-ic-7300-digital-mode-settings/", "https://k0pir.us/transmitter-settings-digital-operation/"]
+        "note": "Built-in USB audio. No Digirig needed. Set ACC/USB AF Output Level for proper RX audio to Pi.",
+        "sources": ["https://wa7ewc.wordpress.com/2016/04/27/icom-ic-7300-digital-mode-settings/"]
       },
-      "notes": "Most popular modern HF SDR. Set CI-V USB Port to 'Unlink from Remote' for full speed.",
+      "notes": "Built-in USB audio - no external interface needed. Audio levels set via radio menu only.",
       "tested": false,
       "power_watts": 100
     },
@@ -119,6 +171,17 @@
       "model": "IC-705",
       "hamlib_id": 3085,
       "baud_rate": 115200,
+      "ptt_method": "CAT",
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "alsa_device": "USB Audio CODEC",
+        "rx_control": "Radio menu only (no ALSA mixer)",
+        "tx_control": "Radio menu only (no ALSA mixer)",
+        "radio_rx_menu": "SET → Connectors → USB AF Output Level: 30-50%",
+        "radio_tx_menu": "SET → Connectors → USB MOD Level: 50%",
+        "freedv_notes": "Built-in USB audio has NO ALSA mixer controls. If freedvtnc2 shows input < -10 dB, increase USB AF Output Level in radio menu."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -130,14 +193,14 @@
         "steps": [
           {"setting": "Mode", "value": "USB-D", "how": "Press MODE → USB-D"},
           {"setting": "DATA MOD", "value": "USB", "how": "SET → Connectors → DATA MOD → USB"},
+          {"setting": "USB AF Output Level", "value": "30-50%", "how": "SET → Connectors → USB AF Output Level"},
           {"setting": "CI-V Address", "value": "A4 (default)", "how": "SET → Connectors → CI-V → Address"},
-          {"setting": "CI-V USB Echo Back", "value": "OFF (default)", "how": "SET → Connectors → CI-V"},
           {"setting": "CI-V Baud Rate", "value": "Auto or 115200", "how": "SET → Connectors → CI-V"}
         ],
-        "note": "Portable SDR. CI-V address is A4h (can change to 94h to mimic IC-7300). ALC should show 1-10% max.",
-        "sources": ["https://oh8stn.org/blog/2021/02/02/icom-ic-705-winlink-express-setup/", "https://sourceforge.net/p/fldigi/wiki/IC-705%20Setup/"]
+        "note": "Built-in USB audio. Set USB AF Output Level for proper RX audio to Pi.",
+        "sources": ["https://oh8stn.org/blog/2021/02/02/icom-ic-705-winlink-express-setup/"]
       },
-      "notes": "Portable SDR. For software lacking IC-705 support, set CI-V to 0x94 and use IC-7300 settings.",
+      "notes": "Built-in USB audio - no external interface needed. Portable QRP.",
       "tested": false,
       "power_watts": 10
     },
@@ -147,6 +210,17 @@
       "model": "IC-7100",
       "hamlib_id": 3070,
       "baud_rate": 19200,
+      "ptt_method": "CAT",
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "alsa_device": "USB Audio CODEC",
+        "rx_control": "Radio menu only (no ALSA mixer)",
+        "tx_control": "Radio menu only (no ALSA mixer)",
+        "radio_rx_menu": "SET → Connectors → USB AF Output Level: 30-50%",
+        "radio_tx_menu": "SET → Connectors → USB MOD Level: 50%",
+        "freedv_notes": "Built-in USB audio has NO ALSA mixer controls. Adjust USB AF Output Level if input < -10 dB."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -157,15 +231,14 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "USB-D", "how": "Touch MODE → USB-D"},
+          {"setting": "USB AF Output Level", "value": "30-50%", "how": "SET → Connectors → USB AF Output Level"},
           {"setting": "CI-V Baud Rate", "value": "19200", "how": "SET → Connectors → CI-V Baud Rate"},
-          {"setting": "CI-V Address", "value": "88h (default)", "how": "SET → Connectors → CI-V Address"},
-          {"setting": "DATA MOD", "value": "USB", "how": "SET → Connectors → DATA MOD"},
-          {"setting": "DATA OFF MOD", "value": "MIC,ACC", "how": "SET → Connectors → DATA OFF MOD (for SSB)"}
+          {"setting": "DATA MOD", "value": "USB", "how": "SET → Connectors → DATA MOD"}
         ],
-        "note": "Built-in USB audio and serial. PTT must use CAT command (RTS/DTR not supported). No ALC in digital modes.",
-        "sources": ["https://support.hamradiodeluxe.com/support/solutions/articles/51000083391-ic-7100-usb-configuration", "https://2e0pgs.github.io/blog/hamradio/2020/07/29/ic-7100-usb-data-mode-operation/"]
+        "note": "Built-in USB audio. PTT via CAT (CI-V).",
+        "sources": ["https://support.hamradiodeluxe.com/support/solutions/articles/51000083391-ic-7100-usb-configuration"]
       },
-      "notes": "All-mode/all-band with D-STAR.",
+      "notes": "Built-in USB audio - no external interface needed.",
       "tested": false,
       "power_watts": 100
     },
@@ -175,6 +248,18 @@
       "model": "IC-718",
       "hamlib_id": 3013,
       "baud_rate": 9600,
+      "ptt_method": "RTS",
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig",
+        "rx_control": "Digirig ALSA mixer (Capture/Mic) + Radio AF Gain",
+        "tx_control": "Digirig ALSA mixer (Speaker/PCM) + Radio MIC Gain",
+        "radio_rx_menu": "AF Gain knob on front panel",
+        "radio_tx_menu": "MIC Gain knob on front panel",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "No built-in USB audio. Requires Digirig/SignaLink. Adjust radio AF Gain if input < -10 dB."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -188,9 +273,9 @@
           {"setting": "CI-V Baud", "value": "9600", "how": "Menu → CI-V → Baud"},
           {"setting": "CI-V Address", "value": "5E", "how": "Menu → CI-V → Address"}
         ],
-        "note": "Entry-level HF. CAT PTT may not work - use VOX or hardware PTT if needed."
+        "note": "Requires external interface (Digirig). CAT PTT may not work - use VOX if needed."
       },
-      "notes": "Entry-level HF. May lack CAT PTT - use hardware PTT instead.",
+      "notes": "Entry-level HF. No built-in USB audio - requires Digirig or SignaLink.",
       "tested": false,
       "power_watts": 100
     },
@@ -200,6 +285,17 @@
       "model": "IC-7200",
       "hamlib_id": 3061,
       "baud_rate": 19200,
+      "ptt_method": "CAT",
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "alsa_device": "USB Audio CODEC",
+        "rx_control": "Radio menu only (no ALSA mixer)",
+        "tx_control": "Radio menu only (no ALSA mixer)",
+        "radio_rx_menu": "USB AF Output Level: 30-50%",
+        "radio_tx_menu": "USB MOD Level: 50%",
+        "freedv_notes": "Built-in USB audio. Adjust USB AF Output Level if input < -10 dB."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -210,12 +306,13 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "USB-D", "how": "Press MODE → select USB-D"},
-          {"setting": "CI-V Baud", "value": "19200", "how": "Set mode → CI-V"},
-          {"setting": "USB MOD Level", "value": "50%", "how": "Set mode → USB MOD"}
+          {"setting": "USB AF Output Level", "value": "30-50%", "how": "Set mode → USB AF Output"},
+          {"setting": "USB MOD Level", "value": "50%", "how": "Set mode → USB MOD"},
+          {"setting": "CI-V Baud", "value": "19200", "how": "Set mode → CI-V"}
         ],
-        "note": "Rugged field radio. Built-in USB audio. Good for portable digital."
+        "note": "Built-in USB audio. Rugged field radio."
       },
-      "notes": "Rugged HF for portable/field use.",
+      "notes": "Built-in USB audio - no external interface needed. Rugged field radio.",
       "tested": false,
       "power_watts": 100
     },
@@ -225,6 +322,17 @@
       "model": "IC-7610",
       "hamlib_id": 3078,
       "baud_rate": 115200,
+      "ptt_method": "CAT",
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "alsa_device": "USB Audio CODEC",
+        "rx_control": "Radio menu only (no ALSA mixer)",
+        "tx_control": "Radio menu only (no ALSA mixer)",
+        "radio_rx_menu": "Menu → Connectors → ACC/USB AF Output Level: 30-50%",
+        "radio_tx_menu": "Menu → Connectors → USB MOD Level: 50%",
+        "freedv_notes": "Built-in USB audio. Adjust ACC/USB AF Output Level if input < -10 dB. Use USB 1 port."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -235,15 +343,15 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "USB-D1", "how": "Touch SSB → USB-D1 for data mode"},
-          {"setting": "CI-V Address", "value": "98h (default)", "how": "Menu → Connectors → CI-V"},
+          {"setting": "ACC/USB AF Output", "value": "30-50%", "how": "Menu → Connectors → ACC/USB AF Output Level"},
           {"setting": "CI-V Baud Rate", "value": "115200", "how": "Menu → Connectors → CI-V → Baud Rate"},
           {"setting": "DATA MOD", "value": "USB", "how": "Menu → Connectors → DATA MOD"},
-          {"setting": "USB Port", "value": "USB 1 (closest to speaker)", "how": "Use USB 1 for CAT/audio"}
+          {"setting": "USB Port", "value": "USB 1", "how": "Use USB 1 (closest to speaker) for CAT/audio"}
         ],
-        "note": "Has 2 USB ports - use USB 1 for CAT control. Power on radio BEFORE starting software. Use USB cable with ferrite.",
-        "sources": ["https://support.hamradiodeluxe.com/support/solutions/articles/51000083466-ic-7610-usb-setup-configuration", "https://www.fbnews.jp/201712/technical_en/"]
+        "note": "Built-in USB audio. Use USB 1 port for CAT/audio.",
+        "sources": ["https://support.hamradiodeluxe.com/support/solutions/articles/51000083466-ic-7610-usb-setup-configuration"]
       },
-      "notes": "Dual-watch SDR flagship.",
+      "notes": "Built-in USB audio - no external interface needed. Dual-watch SDR flagship.",
       "tested": false,
       "power_watts": 100
     },
@@ -256,6 +364,18 @@
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 300,
       "ptt_off_delay_ms": 200,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig",
+        "connector": "6-pin Mini DIN (DATA port)",
+        "rx_control": "Digirig ALSA mixer + Radio Menu 08-07",
+        "tx_control": "Digirig ALSA mixer + Radio Menu 08-08",
+        "radio_rx_menu": "Menu 08-07 (DATA OUT Level): 50",
+        "radio_tx_menu": "Menu 08-08 (DATA IN Level): 50",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "Requires Digirig/SignaLink. If input < -10 dB, increase Menu 08-07 (DATA OUT Level)."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 2,
@@ -266,18 +386,18 @@
       },
       "setup_guide": {
         "steps": [
-          {"setting": "Mode", "value": "DATA-U (shows D-U)", "how": "Press MODE until DATA, display shows D-U"},
+          {"setting": "Mode", "value": "DATA-U (shows D-U)", "how": "Press MODE until DATA"},
           {"setting": "Menu 05-06 (CAT Rate)", "value": "38400", "how": "Menu → 05-06"},
-          {"setting": "Menu 05-07 (CAT TOT)", "value": "1000ms", "how": "Menu → 05-07"},
           {"setting": "Menu 08-01 (DATA Mode)", "value": "OTHERS", "how": "Menu → 08-01 (NOT PSK)"},
-          {"setting": "Menu 08-03/04 (Disp/Shift)", "value": "1500 Hz", "how": "Menu → 08-03 and 08-04"},
+          {"setting": "Menu 08-07 (DATA OUT Level)", "value": "50", "how": "Menu → 08-07 (RX audio to Pi)"},
+          {"setting": "Menu 08-08 (DATA IN Level)", "value": "50", "how": "Menu → 08-08 (TX audio from Pi)"},
           {"setting": "Menu 08-09 (DATA IN)", "value": "REAR", "how": "Menu → 08-09"},
           {"setting": "Menu 08-10 (DATA PTT)", "value": "RTS", "how": "Menu → 08-10"}
         ],
-        "note": "No built-in sound card - requires external interface (Digirig/SignaLink). Must be in DATA mode (not USB) to enable DATA port.",
-        "sources": ["https://themodernham.com/ft-891-the-ultimate-digital-settings-menu-guide-for-digital-modes/", "https://www.jpole-antenna.com/2020/08/12/yaesu-ft-891-setup-for-digital-modes/"]
+        "note": "Requires external interface. DATA port is 6-pin mini DIN.",
+        "sources": ["https://themodernham.com/ft-891-the-ultimate-digital-settings-menu-guide-for-digital-modes/"]
       },
-      "notes": "Mobile HF. Menu 05-06 sets CAT rate. Default 4800, recommend 38400.",
+      "notes": "No built-in USB audio - requires Digirig or SignaLink.",
       "tested": false,
       "power_watts": 100
     },
@@ -290,6 +410,16 @@
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 300,
       "ptt_off_delay_ms": 200,
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "alsa_device": "USB Audio CODEC (Silicon Labs)",
+        "rx_control": "Radio menu (limited ALSA control)",
+        "tx_control": "Radio menu (limited ALSA control)",
+        "radio_rx_menu": "Menu 067 (DATA OUT Level): 50",
+        "radio_tx_menu": "Menu 068 (DATA IN Level): 50",
+        "freedv_notes": "Built-in USB audio. If input < -10 dB, increase Menu 067 (DATA OUT Level)."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 2,
@@ -303,15 +433,14 @@
           {"setting": "Mode", "value": "DATA-USB (shows D-U)", "how": "Press MODE until DATA-USB"},
           {"setting": "Menu 031 (CAT Rate)", "value": "38400", "how": "Menu → 031"},
           {"setting": "Menu 062 (DATA Mode)", "value": "OTHERS", "how": "Menu → 062 (NOT PSK)"},
-          {"setting": "Menu 064/065 (Disp/Shift)", "value": "1500 Hz", "how": "Menu → 064 and 065"},
-          {"setting": "Menu 070 (DATA IN)", "value": "REAR", "how": "Menu → 070"},
-          {"setting": "Menu 071 (DATA PTT)", "value": "RTS", "how": "Menu → 071"},
-          {"setting": "Filter Width", "value": "3000 Hz", "how": "Adjust width after entering DATA mode"}
+          {"setting": "Menu 067 (DATA OUT Level)", "value": "50", "how": "Menu → 067 (RX audio to Pi)"},
+          {"setting": "Menu 068 (DATA IN Level)", "value": "50", "how": "Menu → 068 (TX audio from Pi)"},
+          {"setting": "Menu 071 (DATA PTT)", "value": "RTS", "how": "Menu → 071"}
         ],
-        "note": "Built-in USB sound card. Install Silicon Labs driver. Both COM ports show as 'enhanced' and 'standard' - use enhanced for CAT.",
+        "note": "Built-in USB audio. Silicon Labs driver.",
         "sources": ["https://www.n1rwy.org/?p=157/", "https://www.qsl.net/cm-arc/Yaesu%20FT991A%20Digital.pdf"]
       },
-      "notes": "All-in-one HF/VHF/UHF. Menu 28: Set serial port to RS232C (CAT).",
+      "notes": "Built-in USB audio - no external interface needed.",
       "tested": false,
       "power_watts": 100
     },
@@ -324,6 +453,18 @@
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 350,
       "ptt_off_delay_ms": 250,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig",
+        "connector": "6-pin Mini DIN (DATA port)",
+        "rx_control": "Digirig ALSA mixer (Capture/Mic)",
+        "tx_control": "Digirig ALSA mixer (Speaker/PCM) + Radio Menu 25",
+        "radio_rx_menu": "No RX level menu - use Digirig ALSA and AF Gain knob",
+        "radio_tx_menu": "Menu 25 (DIG MIC): 50 (TX audio sensitivity)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "Requires Digirig. Use DIG mode (not USB). Adjust AF Gain knob and ALSA Capture if input < -10 dB."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 2,
@@ -335,14 +476,15 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "DIG", "how": "Press MODE until DIG shows"},
+          {"setting": "Menu 25 (DIG MIC)", "value": "50", "how": "Menu → 25 (TX audio level)"},
           {"setting": "Menu 26 (DIG Mode)", "value": "USER-U", "how": "Menu → 26"},
-          {"setting": "Menu 14 (CAT Rate)", "value": "9600", "how": "Menu → 14 (or 4800/38400)"},
+          {"setting": "Menu 14 (CAT Rate)", "value": "9600", "how": "Menu → 14"},
           {"setting": "Menu 40 (PKT Rate)", "value": "1200", "how": "Menu → 40"}
         ],
-        "note": "QRP legend. Use DIG mode (not USB). Connect to DATA port (6-pin mini-DIN). External audio interface required.",
+        "note": "QRP legend. Use DIG mode. Connect to DATA port (6-pin mini-DIN).",
         "sources": ["https://km1ndy.com/yaesu-818-digital-modes-wsjt-x-digirig-setup/", "https://oh8stn.org/blog/2018/02/01/yaesu-ft817-data-mode-settings/"]
       },
-      "notes": "QRP legend. PKT rate in menu must be 1200 for some digital modes.",
+      "notes": "QRP legend. Requires external interface. PKT rate must be 1200.",
       "tested": false,
       "power_watts": 5
     },
@@ -355,6 +497,18 @@
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 350,
       "ptt_off_delay_ms": 250,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig",
+        "connector": "6-pin Mini DIN (DATA port)",
+        "rx_control": "Digirig ALSA mixer (Capture/Mic)",
+        "tx_control": "Digirig ALSA mixer (Speaker/PCM) + Radio Menu 25",
+        "radio_rx_menu": "No RX level menu - use Digirig ALSA and AF Gain knob",
+        "radio_tx_menu": "Menu 25 (DIG MIC): 50 (TX audio sensitivity)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "Same as FT-817. Requires Digirig. Adjust AF Gain knob and ALSA Capture if input < -10 dB."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 2,
@@ -366,13 +520,14 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "DIG-U", "how": "Press MODE until DIG"},
+          {"setting": "Menu 25 (DIG MIC)", "value": "50", "how": "Menu → 25 (TX audio level)"},
           {"setting": "Menu 14 (DIG Mode)", "value": "USER-U", "how": "Menu → 14"},
           {"setting": "Menu 26 (CAT Rate)", "value": "9600", "how": "Menu → 26"},
           {"setting": "Menu 62 (CAT/Linear)", "value": "CAT", "how": "Menu → 62"}
         ],
         "note": "FT-817 successor. Same settings. Connect to DATA port for audio."
       },
-      "notes": "FT-817 successor. Same settings.",
+      "notes": "FT-817 successor. Requires external interface.",
       "tested": true,
       "power_watts": 6
     },
@@ -385,6 +540,18 @@
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 300,
       "ptt_off_delay_ms": 200,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig",
+        "connector": "6-pin Mini DIN (DATA port)",
+        "rx_control": "Digirig ALSA mixer (Capture/Mic)",
+        "tx_control": "Digirig ALSA mixer (Speaker/PCM) + Radio Menu 37",
+        "radio_rx_menu": "No RX level menu - use Digirig ALSA and AF Gain knob",
+        "radio_tx_menu": "Menu 37 (DIG GAIN): 5-50 (start low, adjust up)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "Requires Digirig. DIG GAIN default of 50 may be too high - start at 5-10."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 2,
@@ -398,11 +565,12 @@
           {"setting": "Mode", "value": "DIG-U", "how": "Press MODE until DIG"},
           {"setting": "Menu 19 (CAT Rate)", "value": "9600", "how": "Menu → 19"},
           {"setting": "Menu 20 (CAT/Linear)", "value": "CAT", "how": "Menu → 20"},
-          {"setting": "Menu 59 (DIG Mode)", "value": "USER-U", "how": "Menu → 59"}
+          {"setting": "Menu 37 (DIG GAIN)", "value": "10", "how": "Menu → 37 (TX audio, start low)"},
+          {"setting": "Menu 38 (DIG Mode)", "value": "USER-U", "how": "Menu → 38"}
         ],
-        "note": "All-band mobile. Similar to FT-817. Use DATA connector for audio."
+        "note": "All-band mobile. Use DATA connector (6-pin mini-DIN) for audio."
       },
-      "notes": "Menu 19: CAT RATE. Menu 20: Set to CAT.",
+      "notes": "Menu 19: CAT RATE. Menu 37: DIG GAIN (TX level). Requires external interface.",
       "tested": false,
       "power_watts": 100
     },
@@ -415,6 +583,18 @@
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 300,
       "ptt_off_delay_ms": 200,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig",
+        "connector": "6-pin Mini DIN (DATA port)",
+        "rx_control": "Digirig ALSA mixer (Capture/Mic)",
+        "tx_control": "Digirig ALSA mixer (Speaker/PCM) + Radio Menu 37",
+        "radio_rx_menu": "No RX level menu - use Digirig ALSA and AF Gain knob",
+        "radio_tx_menu": "Menu 37 (DIG GAIN): 5-50 (start low, adjust up)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "Same as FT-857. Requires Digirig. DIG GAIN default of 50 may be too high."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 2,
@@ -428,11 +608,12 @@
           {"setting": "Mode", "value": "DIG-U", "how": "Press MODE until DIG"},
           {"setting": "Menu 19 (CAT Rate)", "value": "9600", "how": "Menu → 19"},
           {"setting": "Menu 20 (CAT/Linear)", "value": "CAT", "how": "Menu → 20"},
-          {"setting": "Menu 59 (DIG Mode)", "value": "USER-U", "how": "Menu → 59"}
+          {"setting": "Menu 37 (DIG GAIN)", "value": "10", "how": "Menu → 37 (TX audio, start low)"},
+          {"setting": "Menu 38 (DIG Mode)", "value": "USER-U", "how": "Menu → 38"}
         ],
-        "note": "All-band portable/base. Same settings as FT-857. Built-in battery option."
+        "note": "Same settings as FT-857. Built-in battery option."
       },
-      "notes": "Menu 19: CAT RATE. Menu 20: Set to CAT.",
+      "notes": "Menu 19: CAT RATE. Menu 37: DIG GAIN. Requires external interface.",
       "tested": false,
       "power_watts": 100
     },
@@ -442,9 +623,19 @@
       "model": "TS-590SG",
       "hamlib_id": 2037,
       "baud_rate": 115200,
-      "ptt_method": "RTS",
+      "ptt_method": "CAT",
       "ptt_on_delay_ms": 250,
       "ptt_off_delay_ms": 150,
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "alsa_device": "USB Audio CODEC (PCM2903B)",
+        "rx_control": "Radio Menu 72 only (no ALSA mixer)",
+        "tx_control": "Radio Menu 71 only (no ALSA mixer)",
+        "radio_rx_menu": "Menu 72 (RX Audio): 5-7 (0-9 range)",
+        "radio_tx_menu": "Menu 71 (TX Audio): 1 (0-9 range, start low)",
+        "freedv_notes": "Built-in USB audio has NO useful ALSA mixer. All levels via radio Menu 71/72. Power cycle after changing Menu 68."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -456,16 +647,16 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "USB-DATA", "how": "Press MODE → USB, then press DATA key"},
-          {"setting": "Menu 68 (USB Baud)", "value": "115200", "how": "Menu 68"},
-          {"setting": "Menu 69 (USB Line)", "value": "USB", "how": "Menu 69 (select USB for CAT)"},
+          {"setting": "Menu 68 (USB Baud)", "value": "115200", "how": "Menu 68, then power cycle"},
+          {"setting": "Menu 69 (USB Line)", "value": "USB", "how": "Menu 69 (select USB for audio)"},
           {"setting": "Menu 71 (TX Audio)", "value": "1", "how": "Menu 71 (start low, adjust up)"},
-          {"setting": "Menu 72 (RX Audio)", "value": "5-7", "how": "Menu 72 (adjust for band)"},
+          {"setting": "Menu 72 (RX Audio)", "value": "6", "how": "Menu 72 (RX audio to Pi)"},
           {"setting": "Menu 29 (Data Filter)", "value": "2", "how": "Menu 29 (width+center mode)"}
         ],
-        "note": "Built-in USB audio. Power off/on after changing baud rate. Use USB-DATA mode (not plain USB).",
+        "note": "Built-in USB audio. MUST power cycle after changing baud rate. Use USB-DATA mode.",
         "sources": ["https://sites.google.com/view/kc2rgw/home/kenwood-ts-590sg-digital-mode-setup", "https://www.kenwood.com/i/products/info/amateur/ts_590g/pdf/ts590_g_ft8_settings_en.pdf"]
       },
-      "notes": "Best current Kenwood HF. Menu 67 (COM), Menu 68 (USB).",
+      "notes": "Built-in USB audio. Menu 71/72 control levels (no ALSA mixer). Power cycle after Menu 68 change.",
       "tested": false,
       "power_watts": 100
     },
@@ -474,13 +665,25 @@
       "manufacturer": "Kenwood",
       "model": "TS-480",
       "hamlib_id": 2028,
-      "baud_rate": 9600,
+      "baud_rate": 57600,
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 300,
       "ptt_off_delay_ms": 200,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig",
+        "connector": "6-pin Mini DIN (DATA port)",
+        "rx_control": "Digirig ALSA mixer + Radio Menu 47",
+        "tx_control": "Digirig ALSA mixer + Radio Menu 46",
+        "radio_rx_menu": "Menu 47 (DATA AF Output): 4-5 (0-9 range)",
+        "radio_tx_menu": "Menu 46 (DATA AF Input): 4-5 (0-9 range)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "Requires Digirig. PTT must use DTS pin (pin 3) for DATA audio. Menu 60 (DATA VOX) should be OFF."
+      },
       "serial_settings": {
         "data_bits": 8,
-        "stop_bits": 2,
+        "stop_bits": 1,
         "parity": "none",
         "handshake": "none",
         "rts_state": "OFF",
@@ -489,12 +692,14 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "USB", "how": "Press MODE"},
-          {"setting": "Menu 56 (Baud Rate)", "value": "9600", "how": "Menu 56"},
-          {"setting": "Menu 57 (Data VOX)", "value": "OFF", "how": "Menu 57 (use CAT PTT)"}
+          {"setting": "Menu 46 (DATA AF In)", "value": "4", "how": "Menu 46 (TX audio level)"},
+          {"setting": "Menu 47 (DATA AF Out)", "value": "4", "how": "Menu 47 (RX audio level)"},
+          {"setting": "Menu 56 (Baud Rate)", "value": "57600", "how": "Menu 56"},
+          {"setting": "Menu 60 (DATA VOX)", "value": "OFF", "how": "Menu 60 (use CAT PTT)"}
         ],
-        "note": "Mobile/base transceiver. Use ACC2 connector for digital audio."
+        "note": "Use 6-pin mini DIN DATA connector. PTT via DTS pin required for DATA audio."
       },
-      "notes": "Requires explicit -s 9600 flag. 2 stop bits recommended.",
+      "notes": "No built-in USB audio - requires Digirig. Use DATA connector.",
       "tested": false,
       "power_watts": 100
     },
@@ -503,10 +708,22 @@
       "manufacturer": "Kenwood",
       "model": "TS-2000",
       "hamlib_id": 2014,
-      "baud_rate": 9600,
+      "baud_rate": 57600,
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 300,
       "ptt_off_delay_ms": 200,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "digirig",
+        "connector": "13-pin DIN (ACC2 port)",
+        "rx_control": "Digirig ALSA mixer + Radio Menu 50C",
+        "tx_control": "Digirig ALSA mixer + Radio Menu 50B",
+        "radio_rx_menu": "Menu 50C (Main AF Output): 4 (0-9 range)",
+        "radio_tx_menu": "Menu 50B (AF Input): 4 (0-9 range)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "Requires Digirig. Use PTT pin 9 (mutes mic). CRITICAL: Menu 50F must be 1200 - setting to 9600 mutes ACC2 audio!"
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -518,12 +735,15 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "USB", "how": "Press MODE → USB"},
-          {"setting": "Menu 56 (Baud Rate)", "value": "9600", "how": "Menu 56"},
-          {"setting": "Menu 57 (Data VOX)", "value": "OFF", "how": "Menu 57"}
+          {"setting": "Menu 50A (Packet Filter)", "value": "OFF", "how": "Menu 50A"},
+          {"setting": "Menu 50B (AF Input)", "value": "4", "how": "Menu 50B (TX audio)"},
+          {"setting": "Menu 50C (Main AF Out)", "value": "4", "how": "Menu 50C (RX audio)"},
+          {"setting": "Menu 50F (TNC Speed)", "value": "1200", "how": "Menu 50F (CRITICAL: 9600 mutes audio!)"},
+          {"setting": "Menu 56 (Baud Rate)", "value": "57600", "how": "Menu 56"}
         ],
-        "note": "All-band including satellite. Use DATA connector for audio."
+        "note": "Use ACC2 (13-pin DIN). PTT pin 9 mutes mic. Menu 50F=9600 will mute audio!"
       },
-      "notes": "All-band including satellite. Menu 56 controls baud.",
+      "notes": "No built-in USB audio - requires Digirig. Use ACC2 connector. Menu 50F MUST be 1200.",
       "tested": false,
       "power_watts": 100
     },
@@ -536,6 +756,18 @@
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 250,
       "ptt_off_delay_ms": 150,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "external_usb_soundcard",
+        "connector": "3.5mm TRRS MIC jack (TX in) + 3.5mm Phones jack (RX out)",
+        "rx_control": "External soundcard ALSA + Radio AF menu",
+        "tx_control": "External soundcard ALSA + Radio MIC G menu",
+        "radio_rx_menu": "AF: 2-10 (audio volume)",
+        "radio_tx_menu": "MIC G: ~22 dB (adjust for 4-5 ALC bars)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 50,
+        "freedv_notes": "No LINE IN - uses MIC input (may need attenuator). Set MIC G for 4-5 ALC bars. KXUSB cable is serial only."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -548,13 +780,13 @@
         "steps": [
           {"setting": "Mode", "value": "DATA A", "how": "Tap MODE until DATA A"},
           {"setting": "CONFIG:RS232", "value": "38400", "how": "Hold MENU → RS232"},
-          {"setting": "MIC Gain", "value": "Mid-range", "how": "Adjust during TX for 4-5 ALC bars"},
-          {"setting": "Power", "value": "Set desired", "how": "Use POWER knob (not audio level)"}
+          {"setting": "MIC G", "value": "~22 dB", "how": "Adjust for 4-5 ALC bars during TX"},
+          {"setting": "AF", "value": "5", "how": "RX audio volume"}
         ],
-        "note": "Elecraft power control is different - set audio for 4-5 ALC bars, then adjust power with POWER knob. Do NOT use audio to control power.",
-        "sources": ["https://www.qsoshack.com/data-mode-communication-on-the-elecraft-kx3/", "http://www.w3fpr.com/download_files/Digital%20modes.pdf"]
+        "note": "Requires external USB soundcard. MIC input (no LINE IN). Set audio for 4-5 ALC bars.",
+        "sources": ["https://www.qsoshack.com/data-mode-communication-on-the-elecraft-kx3/"]
       },
-      "notes": "Portable. Wait 500ms after band change before setting mode.",
+      "notes": "Portable. Requires external USB soundcard. KXUSB is serial only. ALC target: 4-5 bars.",
       "tested": false,
       "power_watts": 15
     },
@@ -567,6 +799,18 @@
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 250,
       "ptt_off_delay_ms": 150,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "external_usb_soundcard",
+        "connector": "3.5mm TRRS MIC jack (TX in) + 3.5mm Phones jack (RX out)",
+        "rx_control": "External soundcard ALSA + Radio AF menu",
+        "tx_control": "External soundcard ALSA + Radio MIC G menu",
+        "radio_rx_menu": "AF: 2-10 (audio volume)",
+        "radio_tx_menu": "MIC G: 18-22 dB (adjust for 4-5 ALC bars)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 50,
+        "freedv_notes": "Same as KX3. No LINE IN - uses MIC input (may need 10k/1k attenuator). Set MIC G for 4-5 ALC bars."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -578,14 +822,14 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "DATA A", "how": "Tap MODE until DATA A"},
-          {"setting": "CONFIG:RS232", "value": "38400", "how": "Hold MENU → RS232 (or 9600)"},
-          {"setting": "MIC Gain", "value": "Mid-range", "how": "Adjust during TX for 4-5 ALC bars"},
-          {"setting": "Power", "value": "Set desired", "how": "Use POWER knob (not audio level)"}
+          {"setting": "CONFIG:RS232", "value": "38400", "how": "Hold MENU → RS232"},
+          {"setting": "MIC G", "value": "18-22 dB", "how": "Adjust for 4-5 ALC bars during TX"},
+          {"setting": "AF", "value": "5", "how": "RX audio volume"}
         ],
-        "note": "Same as KX3. Uses MIC input (not LINE IN). Set audio for 4-5 ALC bars, control power with POWER knob.",
-        "sources": ["https://k0pir.us/elecraft-kx2-and-wsjt-x-easy-setup/", "http://www.w3fpr.com/download_files/Digital%20modes.pdf"]
+        "note": "Same as KX3. Requires external USB soundcard. MIC input only.",
+        "sources": ["https://k0pir.us/elecraft-kx2-and-wsjt-x-easy-setup/"]
       },
-      "notes": "Ultra-portable. Same protocol as KX3.",
+      "notes": "Ultra-portable. Same as KX3. Requires external USB soundcard. ALC target: 4-5 bars.",
       "tested": false,
       "power_watts": 12
     },
@@ -598,6 +842,19 @@
       "ptt_method": "RTS",
       "ptt_on_delay_ms": 250,
       "ptt_off_delay_ms": 150,
+      "audio_interface": "external",
+      "audio_settings": {
+        "type": "external_usb_soundcard",
+        "connector": "3.5mm LINE IN (rear, mono) + 3.5mm LINE OUT (rear, stereo)",
+        "impedance": "600 ohm",
+        "rx_control": "External soundcard ALSA + Radio MIC knob (when MIC SEL=LINE)",
+        "tx_control": "External soundcard ALSA + Radio MIC knob (when MIC SEL=LINE)",
+        "radio_rx_menu": "MIC knob: ~30 (when MIC SEL=LINE)",
+        "radio_tx_menu": "MAIN:MIC SEL: LINE (required for digital)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "Has LINE IN/OUT (better than KX2/KX3). Set MIC SEL to LINE. Adjust for 4 bars solid + 5th flickering."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -609,14 +866,15 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "DATA A", "how": "Tap MD until DATA A"},
+          {"setting": "MAIN:MIC SEL", "value": "LINE", "how": "MUST be LINE for digital"},
           {"setting": "CONFIG:RS232", "value": "38400 (3)", "how": "CONFIG → RS232 → 3"},
-          {"setting": "CONFIG:PTT-KEY", "value": "RTS or DTR", "how": "Set to match software PTT setting"},
-          {"setting": "MIC Gain (data)", "value": "Mid-range", "how": "Adjust for 4 bars + flicker on ALC"}
+          {"setting": "CONFIG:PTT-KEY", "value": "RTS", "how": "Match software PTT setting"},
+          {"setting": "MIC knob", "value": "~30", "how": "Adjust for 4-5 ALC bars"}
         ],
-        "note": "Use DATA A mode. Set audio for 4+ ALC bars (below 5 = audio level, above 5 = ALC limiting). Control power with POWER knob.",
-        "sources": ["https://vk2rh.com/k3-and-digital-modes/", "http://www.bigskyspaces.com/w7gj/K3andJT65.pdf"]
+        "note": "Has LINE IN/OUT (600 ohm). K3S has optional USB audio. Set MIC SEL to LINE.",
+        "sources": ["https://vk2rh.com/k3-and-digital-modes/"]
       },
-      "notes": "CONFIG:RS232 menu. 0=4800, 1=9600, 2=19200, 3=38400.",
+      "notes": "CONFIG:RS232: 0=4800, 1=9600, 2=19200, 3=38400. Set MIC SEL to LINE.",
       "tested": false,
       "power_watts": 100
     },
@@ -626,9 +884,19 @@
       "model": "K4",
       "hamlib_id": 2047,
       "baud_rate": 38400,
-      "ptt_method": "RTS",
+      "ptt_method": "CAT",
       "ptt_on_delay_ms": 200,
       "ptt_off_delay_ms": 150,
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "alsa_device": "USB AUDIO CODEC",
+        "rx_control": "Radio menu (<MAIN RX> → <LINE OUT>)",
+        "tx_control": "Radio menu (<TX> → <LINE IN>)",
+        "radio_rx_menu": "<MAIN RX> → <LINE OUT> → SOUNDCARD, adjust level",
+        "radio_tx_menu": "<TX> → <LINE IN> → SOUNDCARD, start at 15%",
+        "freedv_notes": "Built-in USB audio. Set LINE OUT source to SOUNDCARD. Adjust for 4-5 ALC bars."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -640,13 +908,15 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "DATA A", "how": "Tap MODE until DATA A"},
-          {"setting": "Serial Baud", "value": "38400", "how": "Menu → Serial → Baud Rate"},
-          {"setting": "DATA A IN", "value": "USB Audio", "how": "Menu → DATA A → Input"},
-          {"setting": "USB Audio Out", "value": "50%", "how": "Menu → USB Audio Level"}
+          {"setting": "TX Audio Source", "value": "SOUNDCARD", "how": "<TX> → <LINE IN> → SOUNDCARD"},
+          {"setting": "RX Audio Source", "value": "SOUNDCARD", "how": "<MAIN RX> → <LINE OUT> → SOUNDCARD"},
+          {"setting": "LINE IN Level", "value": "15%", "how": "Adjust for 4-5 ALC bars"},
+          {"setting": "Serial Baud", "value": "38400", "how": "Menu → Serial → Baud Rate"}
         ],
-        "note": "Latest Elecraft flagship. Built-in USB audio. Excellent for digital modes."
+        "note": "Built-in USB audio ('USB AUDIO CODEC'). Set sources to SOUNDCARD.",
+        "sources": ["https://www.wt8p.com/configuring-elecraft-k4d-for-ft8/"]
       },
-      "notes": "Latest flagship. Full Kenwood-compatible protocol.",
+      "notes": "Built-in USB audio. Latest Elecraft flagship. ALC target: 4-5 bars.",
       "tested": false,
       "power_watts": 100
     },
@@ -656,8 +926,19 @@
       "model": "QDX",
       "hamlib_id": 2052,
       "baud_rate": 9600,
+      "ptt_method": "CAT",
       "ptt_on_delay_ms": 200,
       "ptt_off_delay_ms": 150,
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb_fixed",
+        "alsa_device": "QRP Labs QDX Transceiver",
+        "rx_control": "FIXED - no adjustment possible",
+        "tx_control": "FIXED - no adjustment possible",
+        "radio_rx_menu": "None - digital USB audio at fixed level",
+        "radio_tx_menu": "None - digital USB audio at fixed level",
+        "freedv_notes": "QDX has FIXED audio levels - no mixer controls. Set all OS volume to 100%. Audio level does NOT affect RF power (QDX synthesizes from frequency)."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -668,15 +949,15 @@
       },
       "setup_guide": {
         "steps": [
-          {"setting": "Mode", "value": "USB (fixed)", "how": "QDX is USB-only, no mode change needed"},
-          {"setting": "PTT Method", "value": "CAT (not VOX)", "how": "In WSJT-X: Settings → Radio → PTT → CAT"},
-          {"setting": "Rig Selection", "value": "Kenwood TS-440S", "how": "In WSJT-X (uses TS-440 protocol)"},
-          {"setting": "Sound Card", "value": "QRP Labs QDX Transceiver", "how": "Select in audio settings"}
+          {"setting": "Mode", "value": "USB (fixed)", "how": "QDX is USB-only, no mode change"},
+          {"setting": "PTT Method", "value": "CAT", "how": "Use CAT PTT (not VOX)"},
+          {"setting": "Rig Selection", "value": "Kenwood TS-440S", "how": "QDX emulates TS-440"},
+          {"setting": "Volume", "value": "100%", "how": "Set OS and software volume to exactly 100%"}
         ],
-        "note": "All-in-one digital radio. Single USB for CAT + audio. Emulates Kenwood TS-440. Use CAT for PTT (not VOX).",
-        "sources": ["https://qrp-labs.com/qdx.html", "https://qrp-labs.com/images/qdx/manual_operation_1_10.pdf"]
+        "note": "All-in-one digital radio. Single USB for CAT + audio. FIXED audio levels - set volume to 100%.",
+        "sources": ["https://qrp-labs.com/qdx.html"]
       },
-      "notes": "QRP digital kit. TS-440 emulation. Select 'Kenwood TS-440S' in software lacking QDX support.",
+      "notes": "QRP digital kit. TS-440 emulation. FIXED audio levels - no mixer. Set volume to 100%.",
       "tested": false,
       "power_watts": 5
     },
@@ -687,6 +968,19 @@
       "hamlib_id": 2028,
       "baud_rate": 115200,
       "ptt_method": "VOX",
+      "audio_interface": "external",
+      "requires_external_audio": true,
+      "audio_settings": {
+        "type": "digirig",
+        "connector": "3.5mm TRS MIC jack + 3.5mm TRS Headphone jack",
+        "rx_control": "Digirig ALSA mixer + Radio Menu 1.1 (Volume)",
+        "tx_control": "Digirig ALSA mixer + Radio Menu 3.3 (TX Drive)",
+        "radio_rx_menu": "Menu 1.1 (Volume): 8-10 (1-15 range, 6dB steps)",
+        "radio_tx_menu": "Menu 3.3 (TX Drive): 4 (0-8 range, 6dB steps)",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 70,
+        "freedv_notes": "USB provides CAT only - requires Digirig for audio. Enable VOX (Menu 3.1: ON). Adjust Noise Gate (Menu 3.2) for reliable VOX trigger."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 1,
@@ -698,18 +992,18 @@
       "setup_guide": {
         "steps": [
           {"setting": "Mode", "value": "USB", "how": "Select USB mode"},
-          {"setting": "Rig Selection", "value": "Kenwood TS-480", "how": "In software (uses TS-480 protocol)"},
-          {"setting": "Baud Rate", "value": "115200 (fw 2.00+)", "how": "38400 for older firmware"},
-          {"setting": "DTR", "value": "HIGH", "how": "Required for CAT"},
-          {"setting": "RTS", "value": "LOW (RX) / HIGH (TX)", "how": "For CW/PTT keying"}
+          {"setting": "Menu 1.1 (Volume)", "value": "8-10", "how": "RX audio level"},
+          {"setting": "Menu 3.1 (VOX)", "value": "ON", "how": "Enable VOX for PTT"},
+          {"setting": "Menu 3.2 (Noise Gate)", "value": "Adjust", "how": "Set for reliable VOX trigger"},
+          {"setting": "Menu 3.3 (TX Drive)", "value": "4", "how": "TX audio level"},
+          {"setting": "Rig Selection", "value": "Kenwood TS-480", "how": "In software"}
         ],
-        "note": "Emulates Kenwood TS-480. Firmware 2.00u+ supports CAT audio streaming (no sound card needed). External audio interface required for older firmware.",
+        "note": "USB is CAT only - requires Digirig for audio. TS-480 emulation. Enable VOX.",
         "sources": ["https://dl2man.de/4-trusdx-manual/", "https://oh8stn.org/blog/2023/03/24/qrp-nvis-data-modes-go-kit-trusdx/"]
       },
-      "notes": "QRP kit. TS-480 emulation. Firmware 2.00+ requires 115200. Older firmware uses 38400. External audio interface required for freedvtnc2.",
+      "notes": "QRP kit. TS-480 emulation. USB=CAT only. Requires external audio interface. Enable VOX.",
       "tested": true,
-      "power_watts": 5,
-      "requires_external_audio": true
+      "power_watts": 5
     },
     {
       "id": "ubitx",
@@ -717,6 +1011,20 @@
       "model": "uBITX",
       "hamlib_id": 1020,
       "baud_rate": 38400,
+      "ptt_method": "CAT",
+      "audio_interface": "external",
+      "requires_external_audio": true,
+      "audio_settings": {
+        "type": "digirig_or_signalink",
+        "connector": "6.35mm (1/4\") MIC jack (TX) + 3.5mm Headphone jack (RX)",
+        "rx_control": "External interface ALSA + Radio volume knob",
+        "tx_control": "External interface ALSA",
+        "radio_rx_menu": "Volume knob on front panel",
+        "radio_tx_menu": "None - adjust via external interface",
+        "recommended_alsa_rx": 75,
+        "recommended_alsa_tx": 50,
+        "freedv_notes": "Requires SignaLink/EasyDigi/Digirig. KD8CEC firmware recommended for CAT. Add ferrites on audio cables for 14MHz+."
+      },
       "serial_settings": {
         "data_bits": 8,
         "stop_bits": 2,
@@ -725,15 +1033,15 @@
       },
       "setup_guide": {
         "steps": [
-          {"setting": "Mode", "value": "USB", "how": "Mode selector (depends on firmware)"},
-          {"setting": "Rig Selection", "value": "Yaesu FT-817", "how": "In software (or FT-857)"},
+          {"setting": "Mode", "value": "USB", "how": "Mode selector (firmware dependent)"},
+          {"setting": "Rig Selection", "value": "Yaesu FT-817", "how": "uBITX emulates FT-817"},
           {"setting": "Baud Rate", "value": "38400", "how": "8N2 (2 stop bits)"},
           {"setting": "PTT Method", "value": "CAT", "how": "In software settings"}
         ],
-        "note": "Emulates FT-817/FT-857. KD8CEC firmware recommended. External audio interface required. Connect headphone out → mic in, radio audio → PC mic.",
-        "sources": ["https://ubitx.net/category/digital-modes/", "http://www.hamskey.com/2018/01/wjst-x-configuration-for-ubitx.html"]
+        "note": "KD8CEC firmware recommended. FT-817 emulation. Requires external audio interface.",
+        "sources": ["https://ubitx.net/category/digital-modes/"]
       },
-      "notes": "QRP kit. FT-817 emulation. Use Yaesu FT-817 settings.",
+      "notes": "QRP kit. FT-817 emulation. Requires external audio interface. KD8CEC firmware recommended.",
       "tested": false,
       "power_watts": 10
     }

@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title>ReticulumHF Status</title>
+    <title>ReticulumHF Gateway</title>
     <style>
         :root {
-            /* Light Fighter Manifesto colors */
             --bg: #0a0a0a;
             --bg-secondary: #111111;
             --surface: #141414;
@@ -30,66 +27,66 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
-            line-height: 1.6;
+            line-height: 1.5;
             min-height: 100vh;
-            padding: 20px;
+            padding: 16px;
         }
 
         .container { max-width: 700px; margin: 0 auto; }
 
         header {
             text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
             border-bottom: 1px solid var(--border);
         }
 
-        h1 { font-size: 1.8rem; margin-bottom: 5px; }
-        .subtitle { color: var(--text-muted); font-size: 0.9rem; }
+        h1 { font-size: 1.5rem; margin-bottom: 4px; }
+        .subtitle { color: var(--text-muted); font-size: 0.85rem; }
 
         .card {
             background: var(--surface);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 14px;
             border: 1px solid var(--border);
         }
 
         .card-title {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 600;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .status-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
+            padding: 8px 0;
             border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
         }
 
         .status-row:last-child { border-bottom: none; }
-
         .status-label { color: var(--text-muted); }
 
         .status-value {
             font-family: monospace;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            font-size: 0.85rem;
         }
 
         .indicator {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
         }
 
         .indicator-active { background: var(--success); }
         .indicator-inactive { background: var(--error); }
         .indicator-pending { background: var(--accent); animation: pulse 1s infinite; }
-        .indicator-warning { background: var(--warning); }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -100,176 +97,224 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            padding: 12px 20px;
+            gap: 6px;
+            padding: 8px 14px;
             border: none;
-            border-radius: 8px;
-            font-size: 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
             background: var(--border);
             color: var(--text);
         }
 
         .btn:hover { background: #444; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .btn-danger {
-            background: var(--error);
-            color: #fff;
-        }
-        .btn-danger:hover { background: var(--accent-hover); }
-
-        .btn-small {
-            padding: 8px 14px;
-            font-size: 0.85rem;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
+        .btn-danger { background: var(--error); color: #fff; }
+        .btn-small { padding: 6px 10px; font-size: 0.8rem; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 
         .rnstatus-output {
             background: var(--bg);
-            border-radius: 8px;
-            padding: 15px;
+            border-radius: 6px;
+            padding: 12px;
             font-family: monospace;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             white-space: pre-wrap;
             word-break: break-all;
-            max-height: 400px;
+            max-height: 300px;
             overflow-y: auto;
         }
 
         .info-box {
-            background: rgba(201, 42, 42, 0.1);
-            border: 1px solid var(--accent);
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 20px;
+            background: rgba(201, 42, 42, 0.08);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 14px;
+            font-size: 0.85rem;
         }
 
         .info-box h3 {
             color: var(--accent);
-            margin-bottom: 10px;
-            font-size: 1rem;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
         }
 
         .info-box code {
             background: var(--bg);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-
-        .info-box p {
-            margin-bottom: 8px;
-        }
-
-        .info-box p:last-child {
-            margin-bottom: 0;
-        }
-
-        .info-box-muted {
-            border-color: var(--text-muted);
-            background: rgba(136, 136, 136, 0.1);
-        }
-        .info-box-muted h3 { color: var(--text-muted); }
-
-        footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-            color: var(--text-muted);
+            padding: 2px 5px;
+            border-radius: 3px;
             font-size: 0.85rem;
         }
-
-        footer a { color: var(--accent); text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
-
-        .error-text { color: var(--error); }
 
         .copy-box {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             background: var(--bg);
-            padding: 10px 15px;
-            border-radius: 6px;
-            margin: 10px 0;
+            padding: 8px 10px;
+            border-radius: 4px;
+            margin: 8px 0;
         }
 
         .copy-box code {
             flex: 1;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             background: transparent;
             padding: 0;
-            word-break: break-all;
         }
 
         .copy-btn {
-            padding: 6px 12px;
+            padding: 4px 10px;
             background: var(--accent);
             color: #fff;
             border: none;
-            border-radius: 4px;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 0.8rem;
-            transition: background 0.2s;
-            flex-shrink: 0;
+            font-size: 0.75rem;
         }
 
         .copy-btn:hover { background: var(--accent-hover); }
         .copy-btn.copied { background: var(--success); }
 
-        .cmd-row {
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        footer a { color: var(--accent); text-decoration: none; }
+
+        /* Health grid */
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+            gap: 10px;
+        }
+
+        .health-item {
+            text-align: center;
+            padding: 10px 6px;
+            background: var(--bg);
+            border-radius: 6px;
+        }
+
+        .health-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .health-value.warning { color: var(--warning); }
+        .health-value.danger { color: var(--error); }
+
+        .health-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Service controls */
+        .service-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 8px;
+        }
+
+        .service-row:last-child { border-bottom: none; }
+        .service-info { flex: 1; }
+        .service-name { color: var(--text-muted); font-size: 0.85rem; }
+
+        .service-status {
+            font-family: monospace;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .service-actions { display: flex; gap: 4px; }
+
+        .btn-icon {
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+        }
+
+        /* Audio monitor */
+        .audio-monitor {
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+
+        .level-display {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 6px 0;
         }
 
-        .cmd-row code {
-            background: var(--bg);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.85rem;
+        .level-meter-container {
+            flex: 1;
+            height: 16px;
+            background: #1a1a1a;
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .cmd-desc {
+        .level-meter-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--success) 0%, var(--success) 70%, var(--warning) 85%, var(--error) 100%);
+            transition: width 0.1s;
+        }
+
+        .level-value {
+            font-family: monospace;
+            font-size: 1rem;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .level-status {
+            font-size: 0.75rem;
+            margin-top: 6px;
             color: var(--text-muted);
-            font-size: 0.85rem;
         }
 
-        .lxmf-address {
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-            color: var(--success);
+        /* Slider controls */
+        .slider-control { margin: 6px 0; }
+        .slider-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 3px; }
+        .slider-row { display: flex; align-items: center; gap: 8px; }
+        .slider-row input[type="range"] {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: var(--border);
+            -webkit-appearance: none;
+            margin: 0;
         }
-
-        .version-info {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            font-size: 0.85rem;
-            color: var(--text-muted);
+        .slider-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
         }
+        .slider-value { font-family: monospace; font-size: 0.8rem; min-width: 35px; text-align: right; }
 
-        .version-info span {
-            display: flex;
-            gap: 5px;
-        }
-
-        .version-info strong {
-            color: var(--text-secondary);
-        }
-
-        /* Modal styles */
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -277,125 +322,78 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             z-index: 1000;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 16px;
         }
+
         .modal.active { display: flex; }
+
         .modal-content {
             background: var(--surface);
-            border-radius: 12px;
-            max-width: 800px;
+            border-radius: 10px;
+            max-width: 700px;
             width: 100%;
             max-height: 80vh;
             overflow: hidden;
             border: 1px solid var(--border);
         }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 20px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border);
         }
-        .modal-header h3 { margin: 0; }
+
+        .modal-header h3 { margin: 0; font-size: 1rem; }
+
         .modal-close {
             background: none;
             border: none;
             color: var(--text-muted);
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             cursor: pointer;
         }
-        .modal-close:hover { color: var(--text); }
+
         .modal-body {
-            padding: 20px;
+            padding: 16px;
             overflow-y: auto;
-            max-height: calc(80vh - 60px);
+            max-height: calc(80vh - 50px);
         }
+
         .log-output {
             background: var(--bg);
-            border-radius: 6px;
-            padding: 15px;
+            border-radius: 4px;
+            padding: 12px;
             font-family: monospace;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 400px;
+            max-height: 350px;
             overflow-y: auto;
         }
 
-        /* System health styles */
-        .health-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 15px;
-        }
-        .health-item {
-            text-align: center;
-            padding: 15px 10px;
-            background: var(--bg);
-            border-radius: 8px;
-        }
-        .health-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text);
-        }
-        .health-value.warning { color: var(--warning); }
-        .health-value.danger { color: var(--error); }
-        .health-label {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-top: 5px;
+        .config-table {
+            width: 100%;
+            font-size: 0.85rem;
         }
 
-        /* Service row with controls */
-        .service-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border);
-            gap: 10px;
+        .config-table td {
+            padding: 4px 8px;
         }
-        .service-row:last-child { border-bottom: none; }
-        .service-info { flex: 1; }
-        .service-name { color: var(--text-muted); }
-        .service-status {
-            font-family: monospace;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
-        }
-        .service-actions {
-            display: flex;
-            gap: 5px;
-        }
-        .btn-icon {
-            padding: 6px 10px;
-            font-size: 0.75rem;
-            background: var(--bg);
-            border: 1px solid var(--border);
-        }
-        .btn-icon:hover { background: var(--border); }
 
-        /* Connected clients */
-        .client-list {
-            font-size: 0.9rem;
-        }
-        .client-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid var(--border);
-        }
-        .client-item:last-child { border-bottom: none; }
-        .no-clients {
+        .config-table td:first-child {
             color: var(--text-muted);
-            font-style: italic;
+            width: 40%;
+        }
+
+        .config-table code {
+            background: var(--bg);
+            padding: 2px 6px;
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -403,34 +401,33 @@
     <div class="container">
         <header>
             <h1>ReticulumHF Gateway</h1>
-            <p class="subtitle" id="system-subtitle">{{ system_info.pi_model or system_info.os }}</p>
-            <p class="subtitle" id="radio-config" style="margin-top: 5px;">Loading...</p>
+            <p class="subtitle" id="radio-config">Loading...</p>
+            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.1.0-alpha</p>
         </header>
 
-        <!-- Gateway Info Card -->
+        <!-- Gateway Status -->
         <div class="card">
             <div class="card-title">Gateway Status</div>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span class="indicator indicator-active" id="gateway-indicator"></span>
-                <span id="gateway-status-text">TCP Bridge Active</span>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="indicator indicator-pending" id="gateway-indicator"></span>
+                <span id="gateway-status-text">Checking...</span>
             </div>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-                Your LXMF address is in your phone app (Sideband/Columba).<br>
-                This Pi acts as a gateway to route messages over HF radio.
+            <p style="color: var(--text-muted); font-size: 0.8rem;">
+                Sideband/Columba connect to port 4242. MeshChat connects to port 8001 with KISS framing.
             </p>
         </div>
 
-        <!-- System Health Card -->
+        <!-- System Health -->
         <div class="card">
             <div class="card-title">System Health</div>
-            <div class="health-grid" id="health-grid">
+            <div class="health-grid">
                 <div class="health-item">
                     <div class="health-value" id="health-temp">--</div>
                     <div class="health-label">CPU Temp</div>
                 </div>
                 <div class="health-item">
                     <div class="health-value" id="health-cpu">--</div>
-                    <div class="health-label">Load Avg</div>
+                    <div class="health-label">Load</div>
                 </div>
                 <div class="health-item">
                     <div class="health-value" id="health-mem">--</div>
@@ -451,16 +448,85 @@
             </div>
         </div>
 
-        <!-- Service Status Card -->
+        <!-- Audio Monitor -->
         <div class="card">
-            <div class="card-title">Service Status</div>
+            <div class="card-title">Audio Level</div>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">
+                Tune to an active frequency (7.078 JS8Call, 14.074 FT8) to verify audio path.
+                Target: -10 to -5 dB on incoming signals. Noise floor at -30 to -60 dB is normal.
+            </p>
+            <div class="audio-monitor">
+                <div class="level-display">
+                    <div class="level-meter-container">
+                        <div class="level-meter-bar" id="audio-meter-bar"></div>
+                    </div>
+                    <span class="level-value" id="audio-level-value">-- dB</span>
+                </div>
+                <div class="level-status" id="audio-level-status">Check level when signals are present</div>
+            </div>
+            <div class="btn-group" style="margin-top: 10px;">
+                <button class="btn btn-small" id="check-audio-btn" onclick="checkAudioLevel()">Check Level</button>
+                <button class="btn btn-small" id="monitor-audio-btn" onclick="toggleAudioMonitor()">Start Monitor</button>
+            </div>
+
+            <!-- ALSA Mixer Controls -->
+            <div id="alsa-sliders" class="audio-monitor" style="margin-top: 12px; display: none;">
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">ALSA Mixer</div>
+                <div id="mic-slider" class="slider-control" style="display: none;">
+                    <div class="slider-label">Input (Mic)</div>
+                    <div class="slider-row">
+                        <input type="range" min="0" max="100" value="75" id="mic-range">
+                        <span class="slider-value" id="mic-value">75%</span>
+                    </div>
+                </div>
+                <div id="speaker-slider" class="slider-control" style="display: none; margin-top: 8px;">
+                    <div class="slider-label">Output (Speaker)</div>
+                    <div class="slider-row">
+                        <input type="range" min="0" max="100" value="70" id="speaker-range">
+                        <span class="slider-value" id="speaker-value">70%</span>
+                    </div>
+                </div>
+                <div id="no-alsa-msg" style="font-size: 0.8rem; color: var(--warning); display: none;">
+                    No ALSA controls. Adjust levels in radio menu.
+                </div>
+            </div>
+        </div>
+
+        <!-- FreeDV Mode -->
+        <div class="card">
+            <div class="card-title">FreeDV Mode</div>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">
+                Adjust based on band conditions. Lower modes are more robust but slower.
+            </p>
+
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <select id="freedv-mode-select" style="flex: 1; padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.9rem;">
+                    <option value="DATAC1">DATAC1 (290 bps) - Good conditions, ~5 dB SNR</option>
+                    <option value="DATAC3">DATAC3 (124 bps) - Moderate conditions, ~0 dB SNR</option>
+                    <option value="DATAC4">DATAC4 (87 bps) - Poor conditions, -4 dB SNR</option>
+                </select>
+                <button class="btn btn-small" onclick="changeFreeDVMode()">Apply</button>
+            </div>
+
+            <div style="background: rgba(201, 42, 42, 0.1); border-left: 3px solid var(--accent); padding: 10px; border-radius: 4px;">
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                    <strong style="color: var(--accent);">Important:</strong> All stations must use the same mode to communicate.
+                    Coordinate with other operators before changing. Modem will restart when mode is changed.
+                </p>
+            </div>
+
+            <div id="freedv-mode-status" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;"></div>
+        </div>
+
+        <!-- Services -->
+        <div class="card">
+            <div class="card-title">Services</div>
 
             <div class="service-row">
                 <div class="service-info">
-                    <div class="service-name">rnsd (Reticulum Daemon)</div>
+                    <div class="service-name">rnsd (Reticulum)</div>
                     <div class="service-status" id="rnsd-status">
-                        <span class="indicator indicator-pending"></span>
-                        Checking...
+                        <span class="indicator indicator-pending"></span> Checking...
                     </div>
                 </div>
                 <div class="service-actions">
@@ -471,10 +537,9 @@
 
             <div class="service-row">
                 <div class="service-info">
-                    <div class="service-name">rigctld (CAT Control)</div>
+                    <div class="service-name">rigctld (CAT)</div>
                     <div class="service-status" id="rigctld-status">
-                        <span class="indicator indicator-pending"></span>
-                        Checking...
+                        <span class="indicator indicator-pending"></span> Checking...
                     </div>
                 </div>
                 <div class="service-actions">
@@ -485,10 +550,9 @@
 
             <div class="service-row">
                 <div class="service-info">
-                    <div class="service-name">freedvtnc2 (HF Modem)</div>
+                    <div class="service-name">freedvtnc2 (Modem)</div>
                     <div class="service-status" id="freedvtnc2-status">
-                        <span class="indicator indicator-pending"></span>
-                        Checking...
+                        <span class="indicator indicator-pending"></span> Checking...
                     </div>
                 </div>
                 <div class="service-actions">
@@ -501,8 +565,7 @@
                 <div class="service-info">
                     <div class="service-name">hostapd (WiFi AP)</div>
                     <div class="service-status" id="wifi-status">
-                        <span class="indicator indicator-pending"></span>
-                        Checking...
+                        <span class="indicator indicator-pending"></span> Checking...
                     </div>
                 </div>
                 <div class="service-actions">
@@ -510,173 +573,67 @@
                     <button class="btn btn-icon" onclick="showLogs('hostapd')" title="Logs">L</button>
                 </div>
             </div>
-
-            <div class="service-row">
-                <div class="service-info">
-                    <div class="service-name">dnsmasq (DHCP/DNS)</div>
-                    <div class="service-status" id="dnsmasq-status">
-                        <span class="indicator indicator-pending"></span>
-                        Checking...
-                    </div>
-                </div>
-                <div class="service-actions">
-                    <button class="btn btn-icon" onclick="controlService('dnsmasq', 'restart')" title="Restart">R</button>
-                    <button class="btn btn-icon" onclick="showLogs('dnsmasq')" title="Logs">L</button>
-                </div>
-            </div>
-
         </div>
 
-        <!-- Connected Clients Card -->
+        <!-- Reticulum Status -->
         <div class="card">
-            <div class="card-title">Connected Clients</div>
-            <div id="clients-list" class="client-list">
-                <p class="no-clients">Loading...</p>
-            </div>
+            <div class="card-title">Reticulum Network</div>
+            <div id="rnstatus-container" class="rnstatus-output">Loading...</div>
         </div>
 
-        <!-- Network Status Card -->
-        <div class="card">
-            <div class="card-title">Reticulum Network Status</div>
-            <div id="rnstatus-container" class="rnstatus-output">
-                Loading rnstatus...
-            </div>
-        </div>
-
-        <!-- SSH Instructions -->
+        <!-- Connection Info -->
         <div class="info-box">
-            <h3>Connect via SSH</h3>
-            <p>Open a terminal and run:</p>
+            <h3>Connect with Sideband/Columba</h3>
+            <table class="config-table">
+                <tr><td>Host</td><td><code id="gateway-host">{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
+                <tr><td>Port</td><td><code>4242</code></td></tr>
+                <tr><td>IFAC Name</td><td><code id="ifac-name-display">(not set)</code></td></tr>
+                <tr><td>IFAC Pass</td><td><code id="ifac-pass-display">(not set)</code></td></tr>
+            </table>
+        </div>
+
+        <div class="info-box">
+            <h3>Connect with MeshChat</h3>
+            <table class="config-table">
+                <tr><td>Host</td><td><code>{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
+                <tr><td>Port</td><td><code>8001</code></td></tr>
+                <tr><td>KISS Framing</td><td><code>YES</code></td></tr>
+                <tr><td>Bitrate</td><td><code>290</code> (DATAC1)</td></tr>
+            </table>
+        </div>
+
+        <div class="info-box">
+            <h3>WiFi Access Point</h3>
+            <table class="config-table">
+                <tr><td>Network</td><td><code>ReticulumHF</code></td></tr>
+                <tr><td>Password</td><td><code>reticulumhf</code></td></tr>
+            </table>
+        </div>
+
+        <div class="info-box">
+            <h3>SSH Access</h3>
             <div class="copy-box">
-                <code id="ssh-cmd">ssh pi@{{ system_info.ip_address or 'reticulumhf.local' }}</code>
+                <code id="ssh-cmd">ssh pi@{{ system_info.ip_address or '192.168.4.1' }}</code>
                 <button class="copy-btn" onclick="copyText('ssh-cmd')">Copy</button>
             </div>
-            <p style="margin-top: 10px;"><strong>Password:</strong> <code>reticulumhf</code></p>
+            <p>Password: <code>reticulumhf</code></p>
         </div>
 
-        <!-- Sideband/Columba Setup Instructions -->
-        <div class="info-box">
-            <h3>Connect with Sideband or Columba</h3>
-
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                <p style="margin: 0 0 8px 0;"><strong>Step 1:</strong> Install app on your phone</p>
-                <ul style="margin: 0 0 0 20px; font-size: 0.9rem;">
-                    <li><a href="https://github.com/markqvist/Sideband/releases" target="_blank" style="color: var(--accent);">Sideband</a> (Android/Linux/macOS/Windows)</li>
-                    <li><a href="https://github.com/torlando-tech/columba" target="_blank" style="color: var(--accent);">Columba</a> (Android - lighter weight)</li>
-                </ul>
-            </div>
-
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                <p style="margin: 0 0 8px 0;"><strong>Step 2:</strong> Connect phone to WiFi</p>
-                <p style="margin: 0; font-size: 0.95rem;">Network: <strong id="wifi-ssid-display">ReticulumHF</strong></p>
-            </div>
-
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                <p style="margin: 0 0 8px 0;"><strong>Step 3:</strong> Configure Sideband TCP Interface</p>
-                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">In Sideband: Settings → Connectivity → Add Interface → TCP Client</p>
-                <table style="width: 100%; margin-top: 10px; font-size: 0.9rem;">
-                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">TCP Host</td><td style="padding: 4px 8px;"><code id="gateway-host">{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
-                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">TCP Port</td><td style="padding: 4px 8px;"><code>4242</code></td></tr>
-                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">IFAC Network Name</td><td style="padding: 4px 8px;"><code id="ifac-name-display">(not set)</code></td></tr>
-                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">IFAC Passphrase</td><td style="padding: 4px 8px;"><code id="ifac-pass-display">(not set)</code></td></tr>
-                </table>
-            </div>
-
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px;">
-                <p style="margin: 0 0 8px 0;"><strong>Step 4:</strong> Start messaging!</p>
-                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">
-                    Messages route: Phone → Gateway → Radio → HF
-                </p>
-            </div>
-        </div>
-
-        <!-- MeshChat Setup Instructions -->
-        <div class="info-box">
-            <h3>Connect with MeshChat (Desktop)</h3>
-
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                <p style="margin: 0 0 8px 0;"><strong>Step 1:</strong> Install MeshChat on your computer</p>
-                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">
-                    Download from <a href="https://github.com/liamcottle/meshtastic-meshchat" target="_blank" style="color: var(--accent);">MeshChat GitHub</a>
-                </p>
-            </div>
-
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                <p style="margin: 0 0 8px 0;"><strong>Step 2:</strong> Add TCP Client Interface</p>
-                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Settings → Interfaces → Add Interface → TCP Client Interface</p>
-                <table style="width: 100%; margin-top: 10px; font-size: 0.9rem;">
-                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">Target Host</td><td style="padding: 4px 8px;"><code>{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
-                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">Target Port</td><td style="padding: 4px 8px;"><code>8001</code></td></tr>
-                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">KISS Framing</td><td style="padding: 4px 8px;"><code>YES</code> (required)</td></tr>
-                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">Interface Mode</td><td style="padding: 4px 8px;"><code>Full</code></td></tr>
-                    <tr><td style="padding: 4px 8px; background: var(--bg-secondary);">Inferred Bitrate</td><td style="padding: 4px 8px;"><code>290</code> (for DATAC1)</td></tr>
-                </table>
-            </div>
-
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px;">
-                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">
-                    <strong>Note:</strong> MeshChat connects directly to freedvtnc2 (port 8001) with KISS framing.
-                    Sideband/NomadNet use port 4242 (no KISS).
-                </p>
-            </div>
-        </div>
-
-        <!-- Advanced SSH Access -->
-        <div class="info-box info-box-muted">
-            <h3>Advanced: SSH Access</h3>
-            <p>For terminal access and diagnostics:</p>
-            <div class="copy-box">
-                <code id="ssh-adv-cmd">ssh pi@{{ system_info.ip_address or '192.168.4.1' }}</code>
-                <button class="copy-btn" onclick="copyText('ssh-adv-cmd')">Copy</button>
-            </div>
-        </div>
-
-        <!-- Quick Commands -->
-        <div class="info-box">
-            <h3>Diagnostic Commands (via SSH)</h3>
-            <div class="cmd-row"><code>rnstatus</code> <span class="cmd-desc">Check Reticulum network</span></div>
-            <div class="cmd-row"><code>journalctl -u freedvtnc2 -f</code> <span class="cmd-desc">View HF modem logs</span></div>
-            <div class="cmd-row"><code>aplay -l</code> <span class="cmd-desc">List audio devices</span></div>
-        </div>
-
-        <!-- Audio Note -->
-        <div class="info-box info-box-muted">
-            <h3>Adjusting Audio Levels</h3>
-            <p>If your signal is too loud or quiet, adjust via SSH:</p>
-            <div class="cmd-row"><code>amixer -c 1 sset 'Speaker' 64%</code> <span class="cmd-desc">Output level</span></div>
-            <div class="cmd-row"><code>amixer -c 1 sset 'Mic' 75%</code> <span class="cmd-desc">Input level</span></div>
-            <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">
-                Replace <code>-c 1</code> with your audio card number from <code>aplay -l</code>
-            </p>
-        </div>
-
-        <!-- Action Buttons -->
+        <!-- Actions -->
         <div class="btn-group">
-            <button class="btn" onclick="refreshStatus()">Refresh Status</button>
+            <button class="btn" onclick="refreshStatus()">Refresh</button>
             <button class="btn" onclick="restartServices()">Restart Services</button>
             <button class="btn btn-danger" onclick="resetSetup()">Reconfigure</button>
         </div>
 
-        <!-- System Control -->
-        <div class="btn-group" style="margin-top: 10px;">
+        <div class="btn-group" style="margin-top: 8px;">
             <button class="btn" onclick="rebootPi()">Reboot</button>
             <button class="btn btn-danger" onclick="shutdownPi()">Shutdown</button>
         </div>
 
-        <!-- Version Info -->
-        <div class="card" style="margin-top: 20px;">
-            <div class="card-title">Software Versions</div>
-            <div id="version-info" class="version-info">
-                Loading versions...
-            </div>
-        </div>
-
         <footer>
             <p>ReticulumHF by <a href="https://lightfightermanifesto.org" target="_blank">Light Fighter Manifesto</a></p>
-            <p style="margin-top: 8px;">
-                <a href="https://github.com/LFManifesto/ReticulumHF" target="_blank">GitHub</a> |
-                <a href="https://markqvist.github.io/Reticulum/manual/" target="_blank">Reticulum Manual</a>
-            </p>
+            <p style="margin-top: 4px;"><a href="https://github.com/LFManifesto/ReticulumHF" target="_blank">Documentation & Source</a></p>
         </footer>
     </div>
 
@@ -684,86 +641,88 @@
     <div class="modal" id="logs-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="logs-modal-title">Service Logs</h3>
+                <h3 id="logs-modal-title">Logs</h3>
                 <button class="modal-close" onclick="closeLogsModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="log-output" id="logs-output">Loading logs...</div>
-                <div class="btn-group" style="margin-top: 15px;">
+                <div class="log-output" id="logs-output">Loading...</div>
+                <div class="btn-group">
                     <button class="btn btn-small" onclick="refreshLogs()">Refresh</button>
-                    <button class="btn btn-small" onclick="loadMoreLogs()">Load More</button>
+                    <button class="btn btn-small" onclick="loadMoreLogs()">More</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Cache-busting fetch wrapper - ensures fresh data every time
+        let audioMonitorInterval = null;
+        let isMonitoring = false;
+        let currentAudioCard = null;
+
         async function apiFetch(url, options = {}) {
             const bustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
             return fetch(bustUrl, { ...options, cache: 'no-store' });
         }
 
-        // Fetch and display LXMF address
-        async function fetchLxmfAddress() {
-            try {
-                const response = await apiFetch('/api/lxmf-address');
-                const data = await response.json();
-                const addrEl = document.getElementById('lxmf-address');
-                const noteEl = document.getElementById('lxmf-note');
-                const copyBtn = document.getElementById('lxmf-copy-btn');
-
-                if (data.success && data.address) {
-                    addrEl.textContent = data.address;
-                    noteEl.textContent = data.note || 'Share this address to receive messages';
-                    copyBtn.style.display = 'block';
-                } else {
-                    addrEl.textContent = 'Not generated yet';
-                    addrEl.classList.remove('lxmf-address');
-                    addrEl.style.color = 'var(--text-muted)';
-                    noteEl.textContent = data.note || 'Address will appear once identity is created';
-                    copyBtn.style.display = 'none';
-                }
-            } catch (err) {
-                document.getElementById('lxmf-address').textContent = 'Error loading';
-            }
-        }
-
-        // Fetch and display config info
+        // Load config info
         async function fetchConfigInfo() {
             try {
                 const response = await apiFetch('/api/config-info');
                 const data = await response.json();
-                const configEl = document.getElementById('radio-config');
-
-                if (data.radio) {
-                    configEl.textContent = `Radio: ${data.radio}`;
-                } else {
-                    configEl.textContent = 'Radio: Not configured';
+                document.getElementById('radio-config').textContent =
+                    data.radio ? `Radio: ${data.radio}` : 'Not configured';
+                if (data.audio_card !== undefined && data.audio_card !== null) {
+                    currentAudioCard = parseInt(data.audio_card);
+                    // Load ALSA controls once we have the card
+                    loadALSAControls();
+                }
+                // Set current FreeDV mode
+                if (data.freedv_mode) {
+                    document.getElementById('freedv-mode-select').value = data.freedv_mode;
                 }
             } catch (err) {
-                document.getElementById('radio-config').textContent = 'Radio: Unknown';
+                document.getElementById('radio-config').textContent = 'Error loading config';
             }
         }
 
-        // Fetch and display versions
-        async function fetchVersions() {
+        async function changeFreeDVMode() {
+            const newMode = document.getElementById('freedv-mode-select').value;
+            const statusEl = document.getElementById('freedv-mode-status');
+
+            if (!confirm(`Change to ${newMode}?\n\nThis will restart the modem. All stations must use the same mode.`)) {
+                return;
+            }
+
+            statusEl.textContent = 'Changing mode...';
+            statusEl.style.color = 'var(--warning)';
+
             try {
-                const response = await apiFetch('/api/versions');
+                const response = await fetch('/api/set-freedv-mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mode: newMode})
+                });
                 const data = await response.json();
-                const versionEl = document.getElementById('version-info');
 
-                versionEl.innerHTML = `
-                    <span><strong>RNS:</strong> ${data.rns || 'unknown'}</span>
-                    <span><strong>NomadNet:</strong> ${data.nomadnet || 'unknown'}</span>
-                    <span><strong>freedvtnc2:</strong> ${data.freedvtnc2 || 'unknown'}</span>
-                `;
+                if (data.success) {
+                    statusEl.textContent = `Mode changed to ${newMode}. Modem restarting...`;
+                    statusEl.style.color = 'var(--success)';
+                    // Refresh service status after a moment
+                    setTimeout(() => {
+                        checkServiceStatus();
+                        statusEl.textContent = `Current mode: ${newMode}`;
+                    }, 3000);
+                } else {
+                    statusEl.textContent = 'Error: ' + (data.error || 'Failed to change mode');
+                    statusEl.style.color = 'var(--error)';
+                }
             } catch (err) {
-                document.getElementById('version-info').textContent = 'Error loading versions';
+                statusEl.textContent = 'Error: ' + err.message;
+                statusEl.style.color = 'var(--error)';
             }
         }
 
-        // Check service status
+        // Service status
         async function checkServiceStatus() {
             try {
                 const response = await apiFetch('/api/service-status');
@@ -772,185 +731,58 @@
                 updateServiceIndicator('rnsd-status', data.rnsd);
                 updateServiceIndicator('rigctld-status', data.rigctld);
                 updateServiceIndicator('freedvtnc2-status', data.freedvtnc2);
-                updateServiceIndicator('dnsmasq-status', data.dnsmasq);
 
-                // Update gateway indicator
                 const gwIndicator = document.getElementById('gateway-indicator');
                 const gwText = document.getElementById('gateway-status-text');
-                if (gwIndicator && gwText) {
-                    if (data.rnsd && data.rnsd.running) {
-                        gwIndicator.className = 'indicator indicator-active';
-                        gwText.textContent = 'TCP Bridge Active (port 4242)';
-                    } else {
-                        gwIndicator.className = 'indicator indicator-inactive';
-                        gwText.textContent = 'TCP Bridge Offline';
-                    }
+                if (data.rnsd?.running) {
+                    gwIndicator.className = 'indicator indicator-active';
+                    gwText.textContent = 'Active (port 4242)';
+                } else {
+                    gwIndicator.className = 'indicator indicator-inactive';
+                    gwText.textContent = 'Offline';
                 }
 
-                // Check WiFi AP status (hostapd)
                 if (data.wifi) {
                     const wifiEl = document.getElementById('wifi-status');
                     if (data.wifi.running) {
                         wifiEl.innerHTML = `<span class="indicator indicator-active"></span> ${data.wifi.ssid || 'Active'}`;
-                        const ssidDisplay = document.getElementById('wifi-ssid-display');
-                        if (ssidDisplay) ssidDisplay.textContent = data.wifi.ssid || 'ReticulumHF';
                     } else {
                         wifiEl.innerHTML = '<span class="indicator indicator-inactive"></span> Stopped';
                     }
-                } else {
-                    document.getElementById('wifi-status').innerHTML = '<span class="indicator indicator-inactive"></span> Not configured';
                 }
 
-                // Update gateway config display
                 if (data.gateway) {
-                    const ifacNameEl = document.getElementById('ifac-name-display');
-                    const ifacPassEl = document.getElementById('ifac-pass-display');
-                    if (ifacNameEl) {
-                        ifacNameEl.textContent = data.gateway.ifac_name || '(not set)';
-                    }
-                    if (ifacPassEl) {
-                        ifacPassEl.textContent = data.gateway.ifac_pass_set ? '(configured)' : '(not set)';
-                    }
+                    document.getElementById('ifac-name-display').textContent =
+                        data.gateway.ifac_name || '(not set)';
+                    document.getElementById('ifac-pass-display').textContent =
+                        data.gateway.ifac_pass_set ? '(set)' : '(not set)';
                 }
+
             } catch (err) {
-                console.error('Failed to check service status:', err);
+                console.error('Service status error:', err);
             }
         }
 
         function updateServiceIndicator(elementId, status) {
             const element = document.getElementById(elementId);
             if (!element) return;
-            if (status && status.running) {
+            if (status?.running) {
                 element.innerHTML = '<span class="indicator indicator-active"></span> Running';
             } else {
                 element.innerHTML = '<span class="indicator indicator-inactive"></span> Stopped';
             }
         }
 
-        // Fetch rnstatus
+        // Reticulum status
         async function fetchRnstatus() {
-            const container = document.getElementById('rnstatus-container');
-
             try {
                 const response = await apiFetch('/api/rnstatus');
                 const data = await response.json();
-
-                if (data.success) {
-                    container.textContent = data.output;
-                } else {
-                    container.innerHTML = '<span class="error-text">Error: ' + data.error + '</span>';
-                }
+                document.getElementById('rnstatus-container').textContent =
+                    data.success ? data.output : 'Error: ' + data.error;
             } catch (err) {
-                container.innerHTML = '<span class="error-text">Failed to fetch rnstatus: ' + err.message + '</span>';
+                document.getElementById('rnstatus-container').textContent = 'Failed to fetch';
             }
-        }
-
-        async function restartServices() {
-            if (!confirm('Restart all ReticulumHF services?')) return;
-
-            try {
-                const response = await apiFetch('/api/restart-services', { method: 'POST' });
-                const data = await response.json();
-
-                if (data.success) {
-                    alert('Services restarting...');
-                    setTimeout(refreshStatus, 3000);
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (err) {
-                alert('Failed to restart services: ' + err.message);
-            }
-        }
-
-        async function resetSetup() {
-            if (!confirm('Reset configuration and re-run setup wizard?\n\nThis will stop radio services and let you reconfigure.')) return;
-
-            try {
-                const response = await apiFetch('/api/reset-setup', { method: 'POST' });
-                const data = await response.json();
-
-                if (data.success) {
-                    window.location.href = '/';
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (err) {
-                alert('Failed to reset setup: ' + err.message);
-            }
-        }
-
-        async function rebootPi() {
-            if (!confirm('Reboot the ReticulumHF gateway?\n\nThis will temporarily disconnect all services.')) return;
-
-            try {
-                const response = await apiFetch('/api/reboot', { method: 'POST' });
-                const data = await response.json();
-
-                if (data.success) {
-                    alert('Rebooting... Page will reconnect when ready.');
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (err) {
-                alert('Failed to reboot: ' + err.message);
-            }
-        }
-
-        async function shutdownPi() {
-            if (!confirm('Shut down the ReticulumHF gateway?\n\nYou will need physical access to turn it back on.')) return;
-
-            try {
-                const response = await apiFetch('/api/shutdown', { method: 'POST' });
-                const data = await response.json();
-
-                if (data.success) {
-                    alert('Shutting down... Wait for green LED to stop blinking before unplugging.');
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (err) {
-                alert('Failed to shutdown: ' + err.message);
-            }
-        }
-
-        // Copy to clipboard function (with fallback for HTTP)
-        function copyText(elementId) {
-            const text = document.getElementById(elementId).textContent;
-            const btn = document.getElementById(elementId).nextElementSibling;
-
-            // Try modern clipboard API first, fallback for HTTP
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => showCopied(btn)).catch(() => fallbackCopy(text, btn));
-            } else {
-                fallbackCopy(text, btn);
-            }
-        }
-
-        function fallbackCopy(text, btn) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showCopied(btn);
-            } catch (err) {
-                btn.textContent = 'Failed';
-                setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
-            }
-            document.body.removeChild(textarea);
-        }
-
-        function showCopied(btn) {
-            btn.textContent = 'Copied!';
-            btn.classList.add('copied');
-            setTimeout(() => {
-                btn.textContent = 'Copy';
-                btn.classList.remove('copied');
-            }, 2000);
         }
 
         // System health
@@ -959,38 +791,37 @@
                 const response = await apiFetch('/api/system-health');
                 const data = await response.json();
 
-                // CPU Temp
-                const tempEl = document.getElementById('health-temp');
                 if (data.cpu_temp !== null) {
+                    const tempEl = document.getElementById('health-temp');
                     tempEl.textContent = data.cpu_temp + 'C';
-                    tempEl.className = 'health-value' + (data.cpu_temp > 70 ? ' danger' : data.cpu_temp > 60 ? ' warning' : '');
+                    tempEl.className = 'health-value' +
+                        (data.cpu_temp > 70 ? ' danger' : data.cpu_temp > 60 ? ' warning' : '');
                 }
 
-                // Load average (just show first number)
                 if (data.load_avg) {
                     document.getElementById('health-cpu').textContent = data.load_avg.split(',')[0];
                 }
 
-                // Memory
                 if (data.memory_percent !== null) {
                     const memEl = document.getElementById('health-mem');
                     memEl.textContent = data.memory_percent + '%';
-                    memEl.className = 'health-value' + (data.memory_percent > 90 ? ' danger' : data.memory_percent > 75 ? ' warning' : '');
+                    memEl.className = 'health-value' +
+                        (data.memory_percent > 90 ? ' danger' : data.memory_percent > 75 ? ' warning' : '');
                 }
 
-                // Disk
                 if (data.disk_percent !== null) {
                     const diskEl = document.getElementById('health-disk');
                     diskEl.textContent = data.disk_percent + '%';
-                    diskEl.className = 'health-value' + (data.disk_percent > 90 ? ' danger' : data.disk_percent > 75 ? ' warning' : '');
+                    diskEl.className = 'health-value' +
+                        (data.disk_percent > 90 ? ' danger' : data.disk_percent > 75 ? ' warning' : '');
                 }
 
-                // Uptime
                 if (data.uptime) {
                     document.getElementById('health-uptime').textContent = data.uptime;
                 }
+
             } catch (err) {
-                console.error('Failed to fetch system health:', err);
+                console.error('Health fetch error:', err);
             }
         }
 
@@ -999,37 +830,247 @@
             try {
                 const response = await apiFetch('/api/connected-clients');
                 const data = await response.json();
-                const clientsEl = document.getElementById('clients-list');
-                const countEl = document.getElementById('health-clients');
+                if (data.success) {
+                    document.getElementById('health-clients').textContent = data.count;
+                }
+            } catch (err) {}
+        }
+
+        // Audio monitoring
+        // Load ALSA controls for the audio card
+        async function loadALSAControls() {
+            if (currentAudioCard === null) return;
+
+            try {
+                const resp = await fetch(`/api/audio-controls/${currentAudioCard}`);
+                const data = await resp.json();
+
+                if (!data.success || !data.controls) return;
+
+                const sliderDiv = document.getElementById('alsa-sliders');
+                const micSlider = document.getElementById('mic-slider');
+                const speakerSlider = document.getElementById('speaker-slider');
+                const noAlsaMsg = document.getElementById('no-alsa-msg');
+
+                const hasControls = data.controls.all && data.controls.all.length > 0;
+
+                if (hasControls) {
+                    sliderDiv.style.display = 'block';
+
+                    // Check for Mic control
+                    if (data.controls.all.includes('Mic')) {
+                        micSlider.style.display = 'block';
+                        const levelResp = await fetch(`/api/audio-level/get/${currentAudioCard}/Mic`);
+                        const levelData = await levelResp.json();
+                        if (levelData.success) {
+                            document.getElementById('mic-range').value = levelData.level;
+                            document.getElementById('mic-value').textContent = levelData.level + '%';
+                        }
+                    }
+
+                    // Check for Speaker control
+                    if (data.controls.all.includes('Speaker')) {
+                        speakerSlider.style.display = 'block';
+                        const levelResp = await fetch(`/api/audio-level/get/${currentAudioCard}/Speaker`);
+                        const levelData = await levelResp.json();
+                        if (levelData.success) {
+                            document.getElementById('speaker-range').value = levelData.level;
+                            document.getElementById('speaker-value').textContent = levelData.level + '%';
+                        }
+                    }
+
+                    if (!data.controls.all.includes('Mic') && !data.controls.all.includes('Speaker')) {
+                        noAlsaMsg.style.display = 'block';
+                    }
+                } else {
+                    sliderDiv.style.display = 'block';
+                    noAlsaMsg.style.display = 'block';
+                }
+            } catch (e) {
+                console.error('Failed to load ALSA controls:', e);
+            }
+        }
+
+        // Slider event handlers
+        document.getElementById('mic-range').addEventListener('input', function() {
+            document.getElementById('mic-value').textContent = this.value + '%';
+        });
+        document.getElementById('mic-range').addEventListener('change', async function() {
+            if (currentAudioCard === null) return;
+            await fetch('/api/audio-level/set', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({card: currentAudioCard, control: 'Mic', level: parseInt(this.value)})
+            });
+        });
+
+        document.getElementById('speaker-range').addEventListener('input', function() {
+            document.getElementById('speaker-value').textContent = this.value + '%';
+        });
+        document.getElementById('speaker-range').addEventListener('change', async function() {
+            if (currentAudioCard === null) return;
+            await fetch('/api/audio-level/set', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({card: currentAudioCard, control: 'Speaker', level: parseInt(this.value)})
+            });
+        });
+
+        async function checkAudioLevel() {
+            if (currentAudioCard === null) {
+                // Try to get from config
+                try {
+                    const resp = await apiFetch('/api/config-info');
+                    const data = await resp.json();
+                    if (data.audio_card !== undefined) {
+                        currentAudioCard = data.audio_card;
+                        loadALSAControls();  // Load ALSA controls when we have the card
+                    }
+                } catch (e) {}
+            }
+
+            if (currentAudioCard === null) {
+                document.getElementById('audio-level-status').textContent = 'No audio card configured';
+                return;
+            }
+
+            const btn = document.getElementById('check-audio-btn');
+            btn.textContent = '...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/audio-level/check/${currentAudioCard}`);
+                const data = await response.json();
 
                 if (data.success) {
-                    countEl.textContent = data.count;
-
-                    if (data.clients.length === 0) {
-                        clientsEl.innerHTML = '<p class="no-clients">No clients connected</p>';
-                    } else {
-                        clientsEl.innerHTML = data.clients.map(c => `
-                            <div class="client-item">
-                                <span>${c.hostname}</span>
-                                <span style="color: var(--text-muted);">${c.ip}</span>
-                            </div>
-                        `).join('');
-                    }
+                    updateAudioDisplay(data.rms_db);
+                } else if (data.device_busy) {
+                    const statusEl = document.getElementById('audio-level-status');
+                    statusEl.innerHTML = 'Audio in use by modem. <a href="#" onclick="stopModemAndCheck();return false;" style="color:var(--accent)">Stop modem to check?</a>';
+                    statusEl.style.color = 'var(--warning)';
+                } else {
+                    document.getElementById('audio-level-status').textContent = data.error || 'Check failed';
                 }
             } catch (err) {
-                console.error('Failed to fetch connected clients:', err);
+                document.getElementById('audio-level-status').textContent = 'Error: ' + err.message;
+            } finally {
+                btn.textContent = 'Check Level';
+                btn.disabled = false;
             }
+        }
+
+        async function stopModemAndCheck() {
+            if (!confirm('Stop modem to check audio levels?\n\nThe modem will automatically restart in 5 seconds.')) return;
+
+            try {
+                // Stop freedvtnc2
+                await fetch('/api/service/freedvtnc2/stop', {method: 'POST'});
+                document.getElementById('audio-level-status').textContent = 'Modem stopped. Checking level...';
+
+                // Wait a moment for device to be released
+                await new Promise(r => setTimeout(r, 1000));
+
+                // Check level
+                await checkAudioLevel();
+
+                // Show restart countdown
+                const statusEl = document.getElementById('audio-level-status');
+                const originalText = statusEl.textContent;
+                let countdown = 5;
+                const countdownInterval = setInterval(() => {
+                    statusEl.textContent = originalText + ` (modem restarting in ${countdown}s)`;
+                    countdown--;
+                    if (countdown < 0) clearInterval(countdownInterval);
+                }, 1000);
+
+                // Restart modem after 5 seconds
+                setTimeout(async () => {
+                    clearInterval(countdownInterval);
+                    await fetch('/api/service/freedvtnc2/start', {method: 'POST'});
+                    checkServiceStatus();
+                    statusEl.textContent = originalText + ' (modem restarted)';
+                    setTimeout(() => {
+                        statusEl.textContent = originalText;
+                    }, 2000);
+                }, 5000);
+            } catch (err) {
+                document.getElementById('audio-level-status').textContent = 'Error: ' + err.message;
+            }
+        }
+
+        function updateAudioDisplay(levelDb) {
+            const pct = Math.max(0, Math.min(100, (levelDb + 60) * (100/60)));
+            document.getElementById('audio-meter-bar').style.width = pct + '%';
+            document.getElementById('audio-level-value').textContent = levelDb.toFixed(1) + ' dB';
+
+            const statusEl = document.getElementById('audio-level-status');
+            if (levelDb > -3) {
+                statusEl.textContent = 'Signal too hot - reduce radio output or gain';
+                statusEl.style.color = 'var(--error)';
+            } else if (levelDb > -10) {
+                statusEl.textContent = 'Good signal level for decoding';
+                statusEl.style.color = 'var(--success)';
+            } else if (levelDb > -30) {
+                statusEl.textContent = 'Normal (noise floor or weak signal)';
+                statusEl.style.color = 'var(--text-muted)';
+            } else {
+                statusEl.textContent = 'Quiet - waiting for signal';
+                statusEl.style.color = 'var(--text-muted)';
+            }
+        }
+
+        async function toggleAudioMonitor() {
+            const btn = document.getElementById('monitor-audio-btn');
+
+            if (isMonitoring) {
+                await fetch('/api/audio-monitor/stop', {method: 'POST'});
+                clearInterval(audioMonitorInterval);
+                isMonitoring = false;
+                btn.textContent = 'Start Monitor';
+            } else {
+                if (currentAudioCard === null) {
+                    await checkAudioLevel(); // This will set currentAudioCard
+                    if (currentAudioCard === null) return;
+                }
+
+                const resp = await fetch('/api/audio-monitor/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({card: currentAudioCard})
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    isMonitoring = true;
+                    btn.textContent = 'Stop Monitor';
+                    audioMonitorInterval = setInterval(pollAudioLevels, 200);
+                } else if (data.device_busy) {
+                    const statusEl = document.getElementById('audio-level-status');
+                    statusEl.innerHTML = 'Audio in use by modem. <a href="#" onclick="stopModemAndCheck();return false;" style="color:var(--accent)">Stop modem to check?</a>';
+                    statusEl.style.color = 'var(--warning)';
+                } else {
+                    document.getElementById('audio-level-status').textContent = data.error || 'Failed to start monitor';
+                }
+            }
+        }
+
+        async function pollAudioLevels() {
+            try {
+                const response = await fetch('/api/audio-monitor/levels');
+                const data = await response.json();
+                if (data.success && data.levels) {
+                    updateAudioDisplay(data.levels.rms_db);
+                }
+            } catch (e) {}
         }
 
         // Service control
         async function controlService(service, action) {
-            const actionText = action === 'restart' ? 'Restart' : action === 'start' ? 'Start' : 'Stop';
-            if (!confirm(`${actionText} ${service}?`)) return;
+            if (!confirm(`${action} ${service}?`)) return;
 
             try {
                 const response = await fetch(`/api/service/${service}/${action}`, { method: 'POST' });
                 const data = await response.json();
-
                 if (data.success) {
                     setTimeout(checkServiceStatus, 2000);
                 } else {
@@ -1040,7 +1081,7 @@
             }
         }
 
-        // Logs viewer
+        // Logs
         let currentLogsService = '';
         let currentLogsLines = 50;
 
@@ -1063,15 +1104,10 @@
             try {
                 const response = await fetch(`/api/logs/${currentLogsService}?lines=${currentLogsLines}`);
                 const data = await response.json();
-
-                if (data.success) {
-                    output.textContent = data.logs;
-                    output.scrollTop = output.scrollHeight;
-                } else {
-                    output.textContent = 'Error: ' + data.error;
-                }
+                output.textContent = data.success ? data.logs : 'Error: ' + data.error;
+                output.scrollTop = output.scrollHeight;
             } catch (err) {
-                output.textContent = 'Failed to fetch logs: ' + err.message;
+                output.textContent = 'Failed: ' + err.message;
             }
         }
 
@@ -1080,23 +1116,87 @@
             refreshLogs();
         }
 
-        // Close modal on escape or click outside
         document.getElementById('logs-modal').addEventListener('click', function(e) {
             if (e.target === this) closeLogsModal();
         });
+
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeLogsModal();
         });
 
-        // Update refreshStatus to include new functions
-        function refreshStatus() {
-            document.getElementById('rnstatus-container').textContent = 'Loading rnstatus...';
-            document.getElementById('rnsd-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
-            document.getElementById('rigctld-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
-            document.getElementById('freedvtnc2-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
-            document.getElementById('wifi-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
-            document.getElementById('dnsmasq-status').innerHTML = '<span class="indicator indicator-pending"></span> Checking...';
+        // Actions
+        async function restartServices() {
+            if (!confirm('Restart all services?')) return;
 
+            try {
+                const response = await apiFetch('/api/restart-services', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Services restarting...');
+                    setTimeout(refreshStatus, 3000);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Failed: ' + err.message);
+            }
+        }
+
+        async function resetSetup() {
+            if (!confirm('Reset and reconfigure?')) return;
+
+            try {
+                const response = await apiFetch('/api/reset-setup', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Failed: ' + err.message);
+            }
+        }
+
+        async function rebootPi() {
+            if (!confirm('Reboot gateway?')) return;
+
+            try {
+                await apiFetch('/api/reboot', { method: 'POST' });
+                alert('Rebooting...');
+            } catch (err) {
+                alert('Failed: ' + err.message);
+            }
+        }
+
+        async function shutdownPi() {
+            if (!confirm('Shutdown gateway?')) return;
+
+            try {
+                await apiFetch('/api/shutdown', { method: 'POST' });
+                alert('Shutting down...');
+            } catch (err) {
+                alert('Failed: ' + err.message);
+            }
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            const btn = document.getElementById(elementId).nextElementSibling;
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.textContent = 'Copied';
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                });
+            }
+        }
+
+        function refreshStatus() {
             checkServiceStatus();
             fetchRnstatus();
             fetchConfigInfo();
@@ -1105,18 +1205,11 @@
         }
 
         // Initial load
-        checkServiceStatus();
-        fetchRnstatus();
-        fetchConfigInfo();
-        fetchVersions();
-        fetchSystemHealth();
-        fetchConnectedClients();
+        refreshStatus();
 
-        // Auto-refresh every 30 seconds
+        // Auto-refresh
         setInterval(refreshStatus, 30000);
-        // Health updates more frequently
         setInterval(fetchSystemHealth, 10000);
-        setInterval(fetchConnectedClients, 15000);
     </script>
 </body>
 </html>
