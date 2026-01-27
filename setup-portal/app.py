@@ -99,7 +99,7 @@ def backup_existing_configs() -> dict:
     # Backup Reticulum config if it exists
     reticulum_config = RETICULUM_CONFIG
     if reticulum_config.exists():
-        backup_path = backup_dir / f"reticulum_config.{timestamp}"
+        backup_path = RETICULUMHF_BACKUPS_DIR / f"reticulum_config.{timestamp}"
         try:
             shutil.copy2(reticulum_config, backup_path)
             backups["reticulum_config"] = str(backup_path)
