@@ -1,6 +1,6 @@
 # ReticulumHF
 
-**v0.2.0-alpha** - Reticulum over HF radio using FreeDV.
+**v0.2.3-alpha** - Reticulum over HF radio using FreeDV.
 
 ## Overview
 
@@ -24,7 +24,7 @@ Download the SD card image, flash it, boot, configure via web portal.
 
 ### Download
 
-[reticulumhf-v0.2.0-alpha.img.xz](https://github.com/LFManifesto/ReticulumHF/releases)
+[reticulumhf-v0.2.3-alpha.img.xz](https://github.com/LFManifesto/ReticulumHF/releases)
 
 ### Quick Start
 
