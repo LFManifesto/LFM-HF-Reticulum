@@ -1,6 +1,6 @@
 # ReticulumHF
 
-**v0.1.0-alpha** - Reticulum over HF radio using FreeDV.
+**v0.2.0-alpha** - Reticulum over HF radio using FreeDV.
 
 ## Overview
 
@@ -24,7 +24,7 @@ Download the SD card image, flash it, boot, configure via web portal.
 
 ### Download
 
-[reticulumhf-v0.1.0-alpha.img.xz](https://github.com/LFManifesto/ReticulumHF/releases)
+[reticulumhf-v0.2.0-alpha.img.xz](https://github.com/LFManifesto/ReticulumHF/releases)
 
 ### Quick Start
 
@@ -50,9 +50,13 @@ Download the SD card image, flash it, boot, configure via web portal.
   - Tune to active frequency (7.078 JS8Call, 14.074 FT8) to verify audio
   - Target: -10 to -5 dB on incoming signals
   - Noise floor at -30 to -60 dB is normal
-- **ALSA Mixer Controls** - Adjust input/output levels from the web UI
+- **ALSA Mixer Controls** - Adjust RX input/output levels from the web UI
+- **TX Audio Level** - Adjustable output volume (-20 to 0 dB) to prevent ALC activation
+  - Default: -6 dB (safe for most radios)
+  - Reduce if radio power fluctuates during TX
 - **FreeDV Mode Selection** - Switch between DATAC1/DATAC3/DATAC4 based on conditions
 - **Service Controls** - Restart/view logs for rnsd, rigctld, freedvtnc2
+- **Troubleshooting Tips** - Common issues and solutions
 
 ### FreeDV Modes
 
@@ -72,29 +76,32 @@ Download the SD card image, flash it, boot, configure via web portal.
 | WiFi Password | reticulumhf |
 | Gateway IP | 192.168.4.1 |
 | Web Portal | http://192.168.4.1 |
-| Sideband/NomadNet Port | 4242 |
-| MeshChat Port | 8001 (KISS framing) |
+| RNS Gateway Port | 4242 (all clients) |
 | SSH | pi / reticulumhf |
 
 ### Client Connections
 
-**Sideband / NomadNet / Columba** (port 4242):
+All clients connect using **TCP Client Interface** on port **4242**.
+
+**Sideband / Columba:**
+Settings → Connectivity → Add Interface → TCP Client
 
 | Setting | Value |
 |---------|-------|
-| Interface Type | TCP Client |
-| Host | 192.168.4.1 |
+| Interface Type | TCP Client Interface |
+| Address | 192.168.4.1 |
 | Port | 4242 |
 
-**MeshChat** (port 8001, KISS framing required):
+**MeshChat:**
+Settings → Interfaces → Add → TCP Client Interface
 
 | Setting | Value |
 |---------|-------|
+| Interface Type | TCP Client Interface |
 | Target Host | 192.168.4.1 |
-| Target Port | 8001 |
-| KISS Framing | YES |
-| Interface Mode | Full |
-| Inferred Bitrate | 290 (DATAC1), 124 (DATAC3), 87 (DATAC4) |
+| Target Port | 4242 |
+
+**Note:** If IFAC is configured on the gateway, clients must use matching IFAC Name and Passphrase.
 
 ### What's Included
 
@@ -206,9 +213,10 @@ rigctld -m 3088 -r /dev/ttyUSB0 -s 19200 -t 4532 -P RTS &
 # Start freedvtnc2
 freedvtnc2 --input-device 1 --output-device 1 --mode DATAC1 \
     --rigctld-port 4532 --kiss-tcp-port 8001 --kiss-tcp-address 0.0.0.0 \
-    --ptt-on-delay-ms 300 --ptt-off-delay-ms 200 --output-volume -3
+    --ptt-on-delay-ms 300 --ptt-off-delay-ms 200 --output-volume -6
 
 # For VOX mode (no CAT), use --rigctld-port 0
+# Reduce --output-volume to -10 or lower if radio ALC activates (power fluctuates)
 ```
 
 ---
@@ -233,6 +241,10 @@ rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 0  # Unkey
 
 ### Common Issues
 
+**Radio power fluctuates during TX (4-10W instead of steady 10W):**
+- ALC is activating due to TX audio being too hot
+- Reduce TX Audio Level on status page (try -8 to -12 dB)
+
 **Audio in use by modem:**
 - Status page shows "Audio in use by modem" - click to temporarily stop modem for level check
 - Modem automatically restarts after 5 seconds
@@ -247,6 +259,11 @@ rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 0  # Unkey
 - Test PTT manually: `rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 1`
 - For VOX: check radio VOX settings and audio levels
 
+**Can't connect from phone:**
+- Verify connected to ReticulumHF WiFi
+- Check interface settings match (TCP Client, 192.168.4.1:4242)
+- Verify IFAC settings match if configured
+
 **Can't decode signals:**
 - Verify both stations using same FreeDV mode
 - Check audio levels: target -10 to -5 dB on signals
@@ -259,14 +276,16 @@ rigctl -m 3088 -r /dev/ttyUSB0 -s 19200 T 0  # Unkey
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Client (Sideband/MeshChat/NomadNet)                            │
+│  TCP Client Interface → 192.168.4.1:4242                        │
 └─────────────────────────────┬───────────────────────────────────┘
-                              │ TCP (4242 or 8001)
+                              │ WiFi (TCP:4242)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  Raspberry Pi (ReticulumHF Gateway)                             │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
-│  │    rnsd     │  │ freedvtnc2  │  │  rigctld    │              │
+│  │    rnsd     │──│ freedvtnc2  │──│  rigctld    │              │
 │  │  (TCP:4242) │  │  (TCP:8001) │  │  (TCP:4532) │              │
+│  │  boundary   │  │  FreeDV     │  │  CAT/PTT    │              │
 │  └─────────────┘  └─────────────┘  └─────────────┘              │
 └─────────────────────────────┬───────────────────────────────────┘
                               │ USB (Audio + CAT)
