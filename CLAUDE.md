@@ -87,7 +87,8 @@ HF Radio --> RF --> Remote Station
 | Config File | `/etc/reticulumhf/config.env` |
 | RNS Config | `/home/pi/.reticulum/config` |
 | TCP Mode | boundary (prevents TCP flooding HF) |
-| TX Audio Default | -6 dB |
+| TX Audio Default | 0 dB |
+| ALSA Playback Default | 80% |
 
 ## Client Connection Settings
 
@@ -107,7 +108,8 @@ All clients (Sideband, MeshChat, Columba) use the same settings:
 
 | Issue | Solution |
 |-------|----------|
-| Power fluctuates during TX (ALC) | Reduce TX Audio Level on status page (-8 to -12 dB) |
+| Very low or no TX power | Increase TX Audio Level and ALSA Speaker - target ALC 30-50 |
+| Power fluctuates wildly (ALC >85) | Reduce TX Audio Level or ALSA Speaker |
 | No RX signal | Check radio audio output, ALSA Mic level |
 | Can't connect from phone | Verify WiFi, use TCP Client Interface on port 4242 |
 | freedvtnc2 won't start | Check rigctld running first (CAT control) |

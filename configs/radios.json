@@ -18,7 +18,7 @@
         "radio_rx_menu": "Menu 6 (AUX OUT): 10-15",
         "radio_tx_menu": "Menu 5 (AUX IN): 8-12",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "If freedvtnc2 shows input < -10 dB, increase AUX OUT (Menu 6) on radio"
       },
       "serial_settings": {
@@ -60,7 +60,7 @@
         "radio_rx_menu": "None - G106 has no internal audio level menus",
         "radio_tx_menu": "None - G106 has no internal audio level menus",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "Audio levels controlled entirely by external interface and Pi software. Same ACC pinout as G90."
       },
       "serial_settings": {
@@ -257,7 +257,7 @@
         "radio_rx_menu": "AF Gain knob on front panel",
         "radio_tx_menu": "MIC Gain knob on front panel",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "No built-in USB audio. Requires Digirig/SignaLink. Adjust radio AF Gain if input < -10 dB."
       },
       "serial_settings": {
@@ -373,7 +373,7 @@
         "radio_rx_menu": "Menu 08-07 (DATA OUT Level): 50",
         "radio_tx_menu": "Menu 08-08 (DATA IN Level): 50",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "Requires Digirig/SignaLink. If input < -10 dB, increase Menu 08-07 (DATA OUT Level)."
       },
       "serial_settings": {
@@ -462,7 +462,7 @@
         "radio_rx_menu": "No RX level menu - use Digirig ALSA and AF Gain knob",
         "radio_tx_menu": "Menu 25 (DIG MIC): 50 (TX audio sensitivity)",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "Requires Digirig. Use DIG mode (not USB). Adjust AF Gain knob and ALSA Capture if input < -10 dB."
       },
       "serial_settings": {
@@ -506,7 +506,7 @@
         "radio_rx_menu": "No RX level menu - use Digirig ALSA and AF Gain knob",
         "radio_tx_menu": "Menu 25 (DIG MIC): 50 (TX audio sensitivity)",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "Same as FT-817. Requires Digirig. Adjust AF Gain knob and ALSA Capture if input < -10 dB."
       },
       "serial_settings": {
@@ -549,7 +549,7 @@
         "radio_rx_menu": "No RX level menu - use Digirig ALSA and AF Gain knob",
         "radio_tx_menu": "Menu 37 (DIG GAIN): 5-50 (start low, adjust up)",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "Requires Digirig. DIG GAIN default of 50 may be too high - start at 5-10."
       },
       "serial_settings": {
@@ -592,7 +592,7 @@
         "radio_rx_menu": "No RX level menu - use Digirig ALSA and AF Gain knob",
         "radio_tx_menu": "Menu 37 (DIG GAIN): 5-50 (start low, adjust up)",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "Same as FT-857. Requires Digirig. DIG GAIN default of 50 may be too high."
       },
       "serial_settings": {
@@ -678,7 +678,7 @@
         "radio_rx_menu": "Menu 47 (DATA AF Output): 4-5 (0-9 range)",
         "radio_tx_menu": "Menu 46 (DATA AF Input): 4-5 (0-9 range)",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "Requires Digirig. PTT must use DTS pin (pin 3) for DATA audio. Menu 60 (DATA VOX) should be OFF."
       },
       "serial_settings": {
@@ -721,7 +721,7 @@
         "radio_rx_menu": "Menu 50C (Main AF Output): 4 (0-9 range)",
         "radio_tx_menu": "Menu 50B (AF Input): 4 (0-9 range)",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "Requires Digirig. Use PTT pin 9 (mutes mic). CRITICAL: Menu 50F must be 1200 - setting to 9600 mutes ACC2 audio!"
       },
       "serial_settings": {
@@ -852,7 +852,7 @@
         "radio_rx_menu": "MIC knob: ~30 (when MIC SEL=LINE)",
         "radio_tx_menu": "MAIN:MIC SEL: LINE (required for digital)",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "Has LINE IN/OUT (better than KX2/KX3). Set MIC SEL to LINE. Adjust for 4 bars solid + 5th flickering."
       },
       "serial_settings": {
@@ -978,7 +978,7 @@
         "radio_rx_menu": "Menu 1.1 (Volume): 8-10 (1-15 range, 6dB steps)",
         "radio_tx_menu": "Menu 3.3 (TX Drive): 4 (0-8 range, 6dB steps)",
         "recommended_alsa_rx": 75,
-        "recommended_alsa_tx": 70,
+        "recommended_alsa_tx": 80,
         "freedv_notes": "USB provides CAT only - requires Digirig for audio. Enable VOX (Menu 3.1: ON). Adjust Noise Gate (Menu 3.2) for reliable VOX trigger."
       },
       "serial_settings": {

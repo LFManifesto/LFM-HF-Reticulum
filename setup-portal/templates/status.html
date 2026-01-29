@@ -482,8 +482,8 @@
                 <div id="speaker-slider" class="slider-control" style="display: none; margin-top: 8px;">
                     <div class="slider-label">Output (Speaker)</div>
                     <div class="slider-row">
-                        <input type="range" min="0" max="100" value="70" id="speaker-range">
-                        <span class="slider-value" id="speaker-value">70%</span>
+                        <input type="range" min="0" max="100" value="80" id="speaker-range">
+                        <span class="slider-value" id="speaker-value">80%</span>
                     </div>
                 </div>
                 <div id="no-alsa-msg" style="font-size: 0.8rem; color: var(--warning); display: none;">
@@ -495,13 +495,13 @@
             <div class="audio-monitor" style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;">
                 <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">TX Audio Level</div>
                 <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
-                    Adjust if radio power fluctuates during TX (ALC kicking in). Lower = less distortion.
+                    Target ALC 30-50 on radio. No power? Increase level. ALC &gt;85? Reduce level.
                 </p>
                 <div class="slider-control">
                     <div class="slider-label">Output Volume</div>
                     <div class="slider-row">
-                        <input type="range" min="-20" max="0" value="-6" id="tx-audio-range" onchange="setTxAudio(this.value)">
-                        <span class="slider-value" id="tx-audio-value">-6 dB</span>
+                        <input type="range" min="-20" max="0" value="0" id="tx-audio-range" onchange="setTxAudio(this.value)">
+                        <span class="slider-value" id="tx-audio-value">0 dB</span>
                     </div>
                 </div>
                 <div id="tx-audio-status" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;"></div>
@@ -650,7 +650,8 @@
         <div class="info-box">
             <h3>Troubleshooting</h3>
             <table class="config-table" style="font-size: 0.8rem;">
-                <tr><td style="width: 45%;">Radio power fluctuates (4-10W)</td><td>Reduce TX Audio Level (ALC is activating)</td></tr>
+                <tr><td style="width: 45%;">Radio power very low or zero</td><td>Increase TX Audio Level and ALSA Speaker (ALC too low)</td></tr>
+                <tr><td>Radio power fluctuates wildly</td><td>Reduce TX Audio Level or ALSA Speaker (ALC &gt;85)</td></tr>
                 <tr><td>No signal on RX meter</td><td>Check radio audio output level, ALSA Mic level</td></tr>
                 <tr><td>Can't connect from phone</td><td>Verify WiFi connected, check interface settings match</td></tr>
                 <tr><td>freedvtnc2 won't start</td><td>Check rigctld running first (CAT control)</td></tr>

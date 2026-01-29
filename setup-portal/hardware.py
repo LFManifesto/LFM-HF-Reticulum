@@ -751,7 +751,7 @@ def get_audio_controls(card: int) -> dict:
     return controls
 
 
-def set_audio_levels(card: int, speaker_pct: int = 64, mic_pct: int = 75) -> dict:
+def set_audio_levels(card: int, speaker_pct: int = 80, mic_pct: int = 75) -> dict:
     """
     Set ALSA audio levels for digital modes.
     Automatically discovers available controls and sets appropriate levels.
