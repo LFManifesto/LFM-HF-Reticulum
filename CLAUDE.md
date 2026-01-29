@@ -104,13 +104,35 @@ All clients (Sideband, MeshChat, Columba) use the same settings:
 **Sideband:** Settings → Connectivity → Add Interface → TCP Client
 **MeshChat:** Settings → Interfaces → Add → TCP Client Interface
 
+## ALSA Mixer Controls (CM108/Digirig)
+
+| Control | Purpose | Default | Notes |
+|---------|---------|---------|-------|
+| Speaker | TX output TO radio | 80% | Increase for more TX power |
+| Mic Capture | RX input FROM radio | 75% | NOT the same as "Mic Playback" |
+| Mic Playback | Sidetone/monitoring | 0% (muted) | Should stay muted for digital |
+| Auto Gain Control | AGC toggle | OFF | Must be OFF for digital modes |
+
+**Important:** "Mic Capture" and "Mic Playback" are different controls. Capture = RX input, Playback = monitoring output.
+
+## ALC Targets by Manufacturer
+
+| Manufacturer | ALC Target | Notes |
+|--------------|------------|-------|
+| Xiegu G90/X6100 | 90-100 | REVERSED - high ALC = good |
+| Xiegu G106 | ≤50 | Normal ALC (not reversed) |
+| Icom | Minimal | "Within ALC zone" per Icom manual |
+| Yaesu | Zero | No ALC deflection |
+| Kenwood | Zero | Control power via software |
+| Elecraft | 4-5 bars | Solid 4, flickering 5 |
+
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| Very low or no TX power | Increase TX Audio Level and ALSA Speaker - target ALC 30-50 |
-| Power fluctuates wildly (ALC >85) | Reduce TX Audio Level or ALSA Speaker |
-| No RX signal | Check radio audio output, ALSA Mic level |
+| Very low or no TX power | 1) Increase ALSA Speaker 2) Increase TX Audio Level 3) Check radio TX input menu 4) Xiegu: target ALC 90-100 |
+| Power fluctuates wildly | 1) Reduce ALSA Speaker 2) Reduce TX Audio Level 3) Most radios: target ALC near zero |
+| No RX signal | 1) Increase ALSA Mic Capture (not Playback) 2) Check radio audio output menu 3) Verify AGC is OFF |
 | Can't connect from phone | Verify WiFi, use TCP Client Interface on port 4242 |
 | freedvtnc2 won't start | Check rigctld running first (CAT control) |
 | rnsd not bridging | Verify boundary mode + transport enabled in config |

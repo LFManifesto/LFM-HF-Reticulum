@@ -708,12 +708,20 @@ def test_ptt(port: str, radio_id: str) -> dict:
 def get_audio_controls(card: int) -> dict:
     """
     Enumerate available ALSA mixer controls for an audio card.
-    Returns dict with playback_controls, capture_controls, and other_controls.
+
+    CM108 (Digirig) typically exposes:
+    - Speaker: TX audio output to radio (playback)
+    - Mic Capture: RX audio input from radio (capture)
+    - Mic Playback: Sidetone/monitoring - loops mic to speakers (should be MUTED)
+    - Auto Gain Control: AGC toggle (should be OFF for digital modes)
+
+    Returns dict with categorized controls for proper handling.
     """
     controls = {
-        "playback": [],
-        "capture": [],
-        "switches": [],
+        "playback": [],      # TX output controls (Speaker, PCM, Master)
+        "capture": [],       # RX input controls (Mic Capture, Capture, Line In)
+        "monitoring": [],    # Sidetone/loopback controls (Mic Playback) - should be muted
+        "switches": [],      # Toggle controls (AGC, Boost)
         "all": []
     }
 
@@ -736,14 +744,33 @@ def get_audio_controls(card: int) -> dict:
                     control_name = line[start:end]
                     controls["all"].append(control_name)
 
-                    # Categorize based on common naming patterns
+                    # Categorize based on CM108/Digirig naming patterns
                     name_lower = control_name.lower()
-                    if any(p in name_lower for p in ['speaker', 'pcm', 'master', 'headphone', 'line out', 'playback']):
-                        controls["playback"].append(control_name)
-                    elif any(p in name_lower for p in ['mic', 'capture', 'line in', 'aux', 'input', 'record']):
+
+                    # CRITICAL: Distinguish "Mic Capture" from "Mic Playback"
+                    # "Mic Capture" = RX input FROM radio (what we want)
+                    # "Mic Playback" = Sidetone/monitoring TO speakers (should be muted)
+                    if 'mic' in name_lower and 'playback' in name_lower:
+                        # Mic Playback = monitoring/sidetone - should be MUTED
+                        controls["monitoring"].append(control_name)
+                    elif 'mic' in name_lower and 'capture' in name_lower:
+                        # Mic Capture = RX input from radio
                         controls["capture"].append(control_name)
-                    elif any(p in name_lower for p in ['agc', 'auto gain', 'boost']):
+                    elif 'mic' in name_lower:
+                        # Generic "Mic" - treat as capture (RX input)
+                        controls["capture"].append(control_name)
+                    elif any(p in name_lower for p in ['speaker', 'pcm', 'master', 'headphone', 'line out']):
+                        # TX output controls
+                        controls["playback"].append(control_name)
+                    elif any(p in name_lower for p in ['capture', 'line in', 'aux in', 'input', 'record']):
+                        # RX input controls
+                        controls["capture"].append(control_name)
+                    elif any(p in name_lower for p in ['auto gain', 'agc', 'boost']):
+                        # AGC/boost switches - should be disabled
                         controls["switches"].append(control_name)
+                    elif 'playback' in name_lower:
+                        # Other playback controls
+                        controls["playback"].append(control_name)
 
     except Exception:
         pass
@@ -753,14 +780,27 @@ def get_audio_controls(card: int) -> dict:
 
 def set_audio_levels(card: int, speaker_pct: int = 80, mic_pct: int = 75) -> dict:
     """
-    Set ALSA audio levels for digital modes.
-    Automatically discovers available controls and sets appropriate levels.
-    Works with Digirig, SignaLink, and built-in radio USB audio.
+    Set ALSA audio levels for digital modes on CM108/Digirig devices.
+
+    For CM108 (Digirig Mobile), the controls are:
+    - Speaker (0-100%): TX audio output TO radio - set to speaker_pct
+    - Mic Capture (0-100%): RX audio input FROM radio - set to mic_pct
+    - Mic Playback (0-100%): Sidetone/monitoring - MUTE THIS (set to 0)
+    - Auto Gain Control: AGC toggle - DISABLE THIS (set to off)
+
+    CRITICAL: "Mic Capture" and "Mic Playback" are DIFFERENT controls:
+    - Mic Capture = records audio FROM radio (RX) - this is what freedvtnc2 reads
+    - Mic Playback = loops mic audio TO speakers (monitoring) - should be muted
+
+    Args:
+        card: ALSA card number
+        speaker_pct: TX output level (default 80%)
+        mic_pct: RX input level (default 75%)
     """
     if MOCK_MODE:
         return {
             "success": True,
-            "message": f"Audio levels set: Speaker {speaker_pct}%, Mic {mic_pct}%, AGC off (MOCK)"
+            "message": f"Audio levels set: Speaker {speaker_pct}%, Mic Capture {mic_pct}%, Mic Playback muted, AGC off (MOCK)"
         }
 
     # First verify the audio card exists
@@ -786,25 +826,30 @@ def set_audio_levels(card: int, speaker_pct: int = 80, mic_pct: int = 75) -> dic
     results = {
         "playback_set": None,
         "capture_set": None,
+        "monitoring_muted": False,
         "agc_disabled": False,
         "warnings": [],
-        "available_controls": controls["all"]
+        "available_controls": controls["all"],
+        "control_details": controls
     }
 
-    # Known playback control names (in order of preference)
-    playback_names = ['Speaker', 'PCM', 'Master', 'Headphone', 'Line Out', 'Playback']
-    # Known capture control names (in order of preference)
-    capture_names = ['Capture', 'Mic', 'Line In', 'Aux In', 'Input', 'Record']
-    # AGC-related controls to disable
+    # Known control names in order of preference
+    # TX output controls (audio TO radio)
+    playback_names = ['Speaker', 'PCM', 'Master', 'Headphone', 'Line Out']
+    # RX input controls (audio FROM radio) - prefer specific "Capture" controls
+    capture_names = ['Mic Capture', 'Capture', 'Line In', 'Aux In', 'Input', 'Record']
+    # Monitoring controls to MUTE (sidetone/loopback)
+    monitoring_names = ['Mic Playback', 'Sidetone', 'Monitor']
+    # AGC-related controls to DISABLE
     agc_names = ['Auto Gain Control', 'AGC', 'Mic Boost', 'Boost']
 
     try:
-        # Set playback (output) level
+        # === 1. Set TX output (Speaker/Playback) level ===
         playback_set = False
         for control in playback_names:
             if control in controls["all"] or control in controls["playback"]:
                 result = subprocess.run(
-                    ["amixer", "-c", str(card), "sset", control, f"{speaker_pct}%"],
+                    ["amixer", "-c", str(card), "sset", control, f"{speaker_pct}%", "unmute"],
                     capture_output=True, text=True, timeout=5
                 )
                 if result.returncode == 0:
@@ -825,36 +870,16 @@ def set_audio_levels(card: int, speaker_pct: int = 80, mic_pct: int = 75) -> dic
                     break
 
         if not playback_set:
-            results["warnings"].append("No playback control found - set TX level in radio menu")
+            results["warnings"].append("No TX output control found - adjust TX level in radio menu")
 
-        # Set capture (input) level
+        # === 2. Set RX input (Mic Capture) level ===
+        # IMPORTANT: We want "Mic Capture", NOT "Mic Playback"
         capture_set = False
+
+        # First try specific capture controls
         for control in capture_names:
             if control in controls["all"] or control in controls["capture"]:
-                # Try with 'cap' flag to enable capture
-                result = subprocess.run(
-                    ["amixer", "-c", str(card), "sset", control, f"{mic_pct}%", "cap"],
-                    capture_output=True, text=True, timeout=5
-                )
-                if result.returncode != 0:
-                    # Try without 'cap' flag
-                    result = subprocess.run(
-                        ["amixer", "-c", str(card), "sset", control, f"{mic_pct}%"],
-                        capture_output=True, text=True, timeout=5
-                    )
-                if result.returncode == 0:
-                    results["capture_set"] = control
-                    capture_set = True
-                    # Also try to unmute
-                    subprocess.run(
-                        ["amixer", "-c", str(card), "sset", control, "unmute"],
-                        capture_output=True, text=True, timeout=5
-                    )
-                    break
-
-        if not capture_set:
-            # Try all discovered capture controls
-            for control in controls["capture"]:
+                # Set the level (no "cap" flag - that's for switch controls only)
                 result = subprocess.run(
                     ["amixer", "-c", str(card), "sset", control, f"{mic_pct}%"],
                     capture_output=True, text=True, timeout=5
@@ -864,50 +889,110 @@ def set_audio_levels(card: int, speaker_pct: int = 80, mic_pct: int = 75) -> dic
                     capture_set = True
                     break
 
-        if not capture_set:
-            results["warnings"].append("No capture control found - set RX level in radio menu")
+        # If generic "Mic" exists and nothing else worked, use it for capture
+        if not capture_set and 'Mic' in controls["all"]:
+            # Use cset to specifically target capture volume (not playback)
+            result = subprocess.run(
+                ["amixer", "-c", str(card), "cset", "name='Mic Capture Volume'", f"{mic_pct}%"],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                results["capture_set"] = "Mic Capture Volume"
+                capture_set = True
+            else:
+                # Fallback to sset on generic Mic
+                result = subprocess.run(
+                    ["amixer", "-c", str(card), "sset", "Mic", f"{mic_pct}%"],
+                    capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0:
+                    results["capture_set"] = "Mic"
+                    capture_set = True
 
-        # Disable AGC and boost controls (critical for digital modes)
+        if not capture_set:
+            results["warnings"].append("No RX input control found - adjust RX level in radio menu")
+
+        # === 3. MUTE monitoring/sidetone (Mic Playback) ===
+        # This prevents the mic audio from playing through speakers
+        for control in monitoring_names:
+            if control in controls["all"] or control in controls["monitoring"]:
+                # Mute the monitoring output
+                result = subprocess.run(
+                    ["amixer", "-c", str(card), "sset", control, "0%", "mute"],
+                    capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0:
+                    results["monitoring_muted"] = True
+                else:
+                    # Try just setting to 0
+                    result = subprocess.run(
+                        ["amixer", "-c", str(card), "sset", control, "0%"],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    if result.returncode == 0:
+                        results["monitoring_muted"] = True
+
+        # Also try to mute Mic Playback via cset if it exists
+        if not results["monitoring_muted"]:
+            result = subprocess.run(
+                ["amixer", "-c", str(card), "cset", "name='Mic Playback Switch'", "off"],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                results["monitoring_muted"] = True
+
+        # === 4. DISABLE AGC (Auto Gain Control) ===
+        # Critical for digital modes - AGC causes level fluctuations that corrupt signals
+        agc_actually_disabled = False
         for control in agc_names:
             if control in controls["all"] or control in controls["switches"]:
-                # Try 'off' for toggles
+                # Try 'off' for toggle switches
                 result = subprocess.run(
                     ["amixer", "-c", str(card), "sset", control, "off"],
                     capture_output=True, text=True, timeout=5
                 )
-                if result.returncode != 0:
+                if result.returncode == 0:
+                    agc_actually_disabled = True
+                else:
                     # Try '0' for numeric controls (like Mic Boost)
-                    subprocess.run(
+                    result = subprocess.run(
                         ["amixer", "-c", str(card), "sset", control, "0"],
                         capture_output=True, text=True, timeout=5
                     )
-                results["agc_disabled"] = True
+                    if result.returncode == 0:
+                        agc_actually_disabled = True
 
-        # Store settings persistently
+        results["agc_disabled"] = agc_actually_disabled
+        if not agc_actually_disabled and 'Auto Gain Control' in controls["all"]:
+            results["warnings"].append("WARNING: Could not disable AGC - may cause RX level fluctuations")
+
+        # === 5. Save settings persistently ===
         subprocess.run(["alsactl", "store"], capture_output=True, timeout=5)
 
-        # Build response message
+        # === Build response message ===
         if results["playback_set"] and results["capture_set"]:
-            message = f"Audio set: Output {speaker_pct}% ({results['playback_set']}), Input {mic_pct}% ({results['capture_set']})"
+            message = f"Audio configured: TX {speaker_pct}% ({results['playback_set']}), RX {mic_pct}% ({results['capture_set']})"
+            if results["monitoring_muted"]:
+                message += ", monitoring muted"
             if results["agc_disabled"]:
-                message += ", AGC disabled"
+                message += ", AGC off"
             return {"success": True, "message": message, "details": results}
         elif results["playback_set"] or results["capture_set"]:
             # Partial success
             parts = []
             if results["playback_set"]:
-                parts.append(f"Output {speaker_pct}% ({results['playback_set']})")
+                parts.append(f"TX {speaker_pct}% ({results['playback_set']})")
             if results["capture_set"]:
-                parts.append(f"Input {mic_pct}% ({results['capture_set']})")
+                parts.append(f"RX {mic_pct}% ({results['capture_set']})")
             message = "Partial: " + ", ".join(parts)
             if results["warnings"]:
                 message += ". " + "; ".join(results["warnings"])
             return {"success": True, "message": message, "details": results}
         else:
-            # No controls found - likely built-in radio USB
+            # No controls found - likely built-in radio USB audio
             return {
                 "success": False,
-                "error": "No ALSA mixer controls found. This device may have fixed audio levels. Adjust TX/RX audio levels in the radio's menu instead.",
+                "error": "No ALSA mixer controls found. This radio has built-in USB audio with fixed levels. Adjust TX/RX audio in the radio's menu instead.",
                 "details": results
             }
 

@@ -471,31 +471,42 @@
 
             <!-- ALSA Mixer Controls -->
             <div id="alsa-sliders" class="audio-monitor" style="margin-top: 12px; display: none;">
-                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">ALSA Mixer (RX)</div>
-                <div id="mic-slider" class="slider-control" style="display: none;">
-                    <div class="slider-label">Input (Mic)</div>
-                    <div class="slider-row">
-                        <input type="range" min="0" max="100" value="75" id="mic-range">
-                        <span class="slider-value" id="mic-value">75%</span>
-                    </div>
-                </div>
-                <div id="speaker-slider" class="slider-control" style="display: none; margin-top: 8px;">
-                    <div class="slider-label">Output (Speaker)</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">ALSA Mixer Controls</div>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px;">
+                    Speaker = TX to radio | Mic Capture = RX from radio
+                </p>
+                <div id="speaker-slider" class="slider-control" style="display: none;">
+                    <div class="slider-label">Speaker (TX Output → Radio)</div>
                     <div class="slider-row">
                         <input type="range" min="0" max="100" value="80" id="speaker-range">
                         <span class="slider-value" id="speaker-value">80%</span>
                     </div>
                 </div>
+                <div id="mic-slider" class="slider-control" style="display: none; margin-top: 8px;">
+                    <div class="slider-label">Mic Capture (RX Input ← Radio)</div>
+                    <div class="slider-row">
+                        <input type="range" min="0" max="100" value="75" id="mic-range">
+                        <span class="slider-value" id="mic-value">75%</span>
+                    </div>
+                </div>
+                <div id="agc-status" style="font-size: 0.75rem; margin-top: 8px; display: none;">
+                    <span style="color: var(--text-muted);">AGC:</span>
+                    <span id="agc-value" style="color: var(--success);">OFF (correct for digital)</span>
+                </div>
+                <div id="monitoring-status" style="font-size: 0.75rem; margin-top: 4px; display: none;">
+                    <span style="color: var(--text-muted);">Mic Playback (sidetone):</span>
+                    <span id="monitoring-value" style="color: var(--success);">Muted</span>
+                </div>
                 <div id="no-alsa-msg" style="font-size: 0.8rem; color: var(--warning); display: none;">
-                    No ALSA controls. Adjust levels in radio menu.
+                    No ALSA mixer controls found. This radio has built-in USB audio - adjust levels in radio menu only.
                 </div>
             </div>
 
             <!-- TX Audio Level -->
             <div class="audio-monitor" style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;">
-                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">TX Audio Level</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">TX Audio Level (freedvtnc2)</div>
                 <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
-                    Target ALC 30-50 on radio. No power? Increase level. ALC &gt;85? Reduce level.
+                    Controls modem output level. Adjust based on radio ALC meter.
                 </p>
                 <div class="slider-control">
                     <div class="slider-label">Output Volume</div>
@@ -505,8 +516,15 @@
                     </div>
                 </div>
                 <div id="tx-audio-status" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;"></div>
-                <div id="alc-warning" style="display: none; font-size: 0.75rem; color: var(--warning); margin-top: 4px;">
-                    ⚠ High setting may cause ALC activation. Reduce if power fluctuates.
+            </div>
+
+            <!-- Radio-Specific ALC Guidance -->
+            <div class="audio-monitor" style="margin-top: 12px; background: rgba(201, 42, 42, 0.05); border: 1px solid var(--border);">
+                <div style="font-size: 0.85rem; color: var(--accent); margin-bottom: 8px; font-weight: 600;">ALC Target for Your Radio</div>
+                <div id="alc-guidance" style="font-size: 0.8rem; color: var(--text-secondary);">
+                    Loading radio-specific guidance...
+                </div>
+                <div id="alc-target" style="font-size: 0.9rem; color: var(--success); margin-top: 6px; font-weight: 500; display: none;">
                 </div>
             </div>
         </div>
@@ -650,12 +668,35 @@
         <div class="info-box">
             <h3>Troubleshooting</h3>
             <table class="config-table" style="font-size: 0.8rem;">
-                <tr><td style="width: 45%;">Radio power very low or zero</td><td>Increase TX Audio Level and ALSA Speaker (ALC too low)</td></tr>
-                <tr><td>Radio power fluctuates wildly</td><td>Reduce TX Audio Level or ALSA Speaker (ALC &gt;85)</td></tr>
-                <tr><td>No signal on RX meter</td><td>Check radio audio output level, ALSA Mic level</td></tr>
-                <tr><td>Can't connect from phone</td><td>Verify WiFi connected, check interface settings match</td></tr>
-                <tr><td>freedvtnc2 won't start</td><td>Check rigctld running first (CAT control)</td></tr>
-                <tr><td>rnsd won't connect</td><td>Verify freedvtnc2 is running on port 8001</td></tr>
+                <tr><td style="width: 45%;"><strong>Radio power very low/zero</strong></td><td>
+                    1. Increase ALSA Speaker level<br>
+                    2. Increase TX Audio Level (0 dB)<br>
+                    3. Check radio TX input menu (AUX IN, DATA IN, etc.)<br>
+                    4. For Xiegu: target ALC 90-100 (reversed)
+                </td></tr>
+                <tr><td><strong>Radio power fluctuates/unstable</strong></td><td>
+                    1. Reduce ALSA Speaker level<br>
+                    2. Reduce TX Audio Level (-3 to -6 dB)<br>
+                    3. For most radios: target ALC near zero<br>
+                    4. Check radio TX input menu isn't too high
+                </td></tr>
+                <tr><td><strong>No RX signal in freedvtnc2</strong></td><td>
+                    1. Increase ALSA Mic Capture level (not Mic Playback)<br>
+                    2. Check radio audio output menu (AUX OUT, DATA OUT)<br>
+                    3. Verify AGC is OFF in ALSA mixer<br>
+                    4. Target -10 to -5 dB in freedvtnc2
+                </td></tr>
+                <tr><td><strong>RX level fluctuates</strong></td><td>
+                    1. Disable AGC in ALSA mixer<br>
+                    2. Disable radio AGC (for RX audio path)<br>
+                    3. Check radio RF Gain setting
+                </td></tr>
+                <tr><td><strong>Can't connect from phone</strong></td><td>
+                    1. Connect to ReticulumHF WiFi network<br>
+                    2. Use TCP Client Interface on port 4242<br>
+                    3. Verify gateway shows "Active"
+                </td></tr>
+                <tr><td><strong>freedvtnc2 won't start</strong></td><td>Check rigctld running first (CAT control)</td></tr>
             </table>
         </div>
 
@@ -722,6 +763,27 @@
                 }
                 // Load TX audio level
                 fetchTxAudio();
+
+                // Display radio-specific ALC guidance
+                const alcGuidanceEl = document.getElementById('alc-guidance');
+                const alcTargetEl = document.getElementById('alc-target');
+                if (data.alc_guidance) {
+                    alcGuidanceEl.textContent = data.alc_guidance;
+                    if (data.alc_reversed) {
+                        alcGuidanceEl.style.color = 'var(--warning)';
+                    } else {
+                        alcGuidanceEl.style.color = 'var(--text-secondary)';
+                    }
+                } else {
+                    alcGuidanceEl.textContent = 'Watch ALC meter during TX. Adjust levels until you get stable power output.';
+                }
+                if (data.alc_target) {
+                    alcTargetEl.textContent = `Target ALC: ${data.alc_target}`;
+                    alcTargetEl.style.display = 'block';
+                    if (data.alc_reversed) {
+                        alcTargetEl.style.color = 'var(--warning)';
+                    }
+                }
             } catch (err) {
                 document.getElementById('radio-config').textContent = 'Error loading config';
             }

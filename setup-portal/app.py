@@ -1147,13 +1147,17 @@ def api_lxmf_address():
 
 @app.route("/api/config-info")
 def api_config_info():
-    """API endpoint to get current configuration info."""
+    """API endpoint to get current configuration info including ALC guidance."""
     config = {
         "radio": None,
+        "radio_id": None,
         "serial_port": None,
         "audio_card": None,
         "freedv_mode": "DATAC1",
-        "setup_complete": is_setup_complete()
+        "setup_complete": is_setup_complete(),
+        "alc_guidance": None,
+        "alc_target": None,
+        "alc_reversed": False
     }
 
     # Read from config.env if it exists
@@ -1165,11 +1169,43 @@ def api_config_info():
                     line = line.strip()
                     if line.startswith("RADIO_ID="):
                         radio_id = line.split("=", 1)[1]
-                        # Look up radio name
+                        config["radio_id"] = radio_id
+                        # Look up radio info and ALC guidance
                         radios = load_radios()
                         radio = next((r for r in radios if r["id"] == radio_id), None)
                         if radio:
                             config["radio"] = f"{radio['manufacturer']} {radio['model']}"
+                            # Get ALC guidance from audio_settings
+                            audio_settings = radio.get("audio_settings", {})
+                            config["alc_guidance"] = audio_settings.get("alc_guidance")
+                            config["alc_target"] = audio_settings.get("alc_target")
+                            config["alc_reversed"] = audio_settings.get("alc_reversed", False)
+                            # Provide default guidance based on manufacturer if not specified
+                            if not config["alc_guidance"]:
+                                manufacturer = radio.get("manufacturer", "").lower()
+                                if manufacturer == "xiegu":
+                                    if radio.get("model") in ["G90", "X6100", "X5105"]:
+                                        config["alc_guidance"] = "Xiegu ALC is REVERSED: high ALC (90-100) = good. Adjust until ALC reads 90-100."
+                                        config["alc_target"] = "90-100"
+                                        config["alc_reversed"] = True
+                                    else:
+                                        config["alc_guidance"] = "Keep ALC ≤50 for optimal linearity."
+                                        config["alc_target"] = "≤50"
+                                elif manufacturer == "icom":
+                                    config["alc_guidance"] = "Per Icom manual: keep audio 'within the ALC zone'. Minimal ALC movement is ideal. USB MOD Level 30-40%."
+                                    config["alc_target"] = "Minimal"
+                                elif manufacturer == "yaesu":
+                                    config["alc_guidance"] = "Target ZERO ALC. Adjust until ALC meter just begins to move, then back off slightly."
+                                    config["alc_target"] = "Zero"
+                                elif manufacturer == "kenwood":
+                                    config["alc_guidance"] = "Target ZERO ALC. Control power via software audio level, not by driving ALC."
+                                    config["alc_target"] = "Zero"
+                                elif manufacturer == "elecraft":
+                                    config["alc_guidance"] = "Target 4 solid ALC bars with 5th bar flickering. Adjust MIC G or LINE IN for this."
+                                    config["alc_target"] = "4-5 bars"
+                                else:
+                                    config["alc_guidance"] = "Watch ALC meter during TX. Adjust TX Audio Level until you get stable power output without excessive ALC."
+                                    config["alc_target"] = "Minimal"
                         else:
                             config["radio"] = radio_id
                     elif line.startswith("SERIAL_PORT="):

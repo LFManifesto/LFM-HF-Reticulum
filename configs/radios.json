@@ -1,7 +1,15 @@
 {
-  "version": "1.2.0",
-  "updated": "2026-01-27",
-  "notes": "Audio settings for ReticulumHF Pi gateway. freedvtnc2 uses ALSA for audio I/O. Target RX level: -5 dB.",
+  "version": "1.3.0",
+  "updated": "2026-01-29",
+  "notes": "Audio settings for ReticulumHF Pi gateway. freedvtnc2 uses ALSA for audio I/O. Target RX level: -5 dB. ALC guidance varies by manufacturer.",
+  "alc_notes": {
+    "xiegu_reversed": "Xiegu G90/X6100 have REVERSED ALC - high ALC (90-100) = good signal. 0 ALC = bad.",
+    "xiegu_g106": "Xiegu G106 uses normal ALC - keep ≤50 for optimal linearity.",
+    "icom_sdr": "Icom SDR radios (IC-7300, IC-705, etc): Per Icom manual, keep audio 'within the ALC zone'. Minimal movement is ideal.",
+    "yaesu_zero": "Yaesu radios: Target ZERO ALC. Adjust until ALC meter just begins to move, then back off slightly.",
+    "kenwood_zero": "Kenwood radios: Target ZERO ALC. Control power via software audio level, not by driving ALC.",
+    "elecraft_bars": "Elecraft radios: Target 4 solid ALC bars with 5th bar flickering. Adjust MIC G for this."
+  },
   "radios": [
     {
       "id": "xiegu_g90",
@@ -13,12 +21,15 @@
       "audio_interface": "external",
       "audio_settings": {
         "type": "digirig",
-        "rx_control": "Digirig ALSA mixer (Capture/Mic) + Radio Menu 6",
-        "tx_control": "Digirig ALSA mixer (Speaker/PCM) + Radio Menu 5",
+        "rx_control": "Digirig ALSA mixer (Mic Capture) + Radio Menu 6",
+        "tx_control": "Digirig ALSA mixer (Speaker) + Radio Menu 5",
         "radio_rx_menu": "Menu 6 (AUX OUT): 10-15",
         "radio_tx_menu": "Menu 5 (AUX IN): 8-12",
         "recommended_alsa_rx": 75,
         "recommended_alsa_tx": 80,
+        "alc_target": "90-100",
+        "alc_reversed": true,
+        "alc_guidance": "G90 ALC is REVERSED: high ALC (90-100) = clean signal. 0 ALC = bad/no modulation. Adjust AUX IN (Menu 5) until ALC reads 90-100 during TX.",
         "freedv_notes": "If freedvtnc2 shows input < -10 dB, increase AUX OUT (Menu 6) on radio"
       },
       "serial_settings": {
@@ -61,6 +72,9 @@
         "radio_tx_menu": "None - G106 has no internal audio level menus",
         "recommended_alsa_rx": 75,
         "recommended_alsa_tx": 80,
+        "alc_target": "≤50",
+        "alc_reversed": false,
+        "alc_guidance": "G106 uses normal ALC (not reversed like G90). Keep ALC ≤50 for optimal linearity. Adjust ALSA Speaker level until ALC stays below 50.",
         "freedv_notes": "Audio levels controlled entirely by external interface and Pi software. Same ACC pinout as G90."
       },
       "serial_settings": {
