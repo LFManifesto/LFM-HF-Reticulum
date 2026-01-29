@@ -1,4 +1,4 @@
-# Contributing to LFM-HF-Reticulum
+# Contributing to ReticulumHF
 
 Thank you for your interest in contributing. This project documents working configurations for Reticulum over HF radio. Contributions that expand hardware support, improve documentation, or fix errors are welcome.
 
