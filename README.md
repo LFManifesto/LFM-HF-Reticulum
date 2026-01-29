@@ -52,8 +52,8 @@ Download the SD card image, flash it, boot, configure via web portal.
   - Noise floor at -30 to -60 dB is normal
 - **ALSA Mixer Controls** - Adjust RX input/output levels from the web UI
 - **TX Audio Level** - Adjustable output volume (-20 to 0 dB) to prevent ALC activation
-  - Default: -6 dB (safe for most radios)
-  - Reduce if radio power fluctuates during TX
+  - Default: 0 dB (full scale - control levels via ALSA and radio menu)
+  - Reduce to -3 to -6 dB if radio power fluctuates during TX
 - **FreeDV Mode Selection** - Switch between DATAC1/DATAC3/DATAC4 based on conditions
 - **Service Controls** - Restart/view logs for rnsd, rigctld, freedvtnc2
 - **Troubleshooting Tips** - Common issues and solutions
@@ -213,10 +213,10 @@ rigctld -m 3088 -r /dev/ttyUSB0 -s 19200 -t 4532 -P RTS &
 # Start freedvtnc2
 freedvtnc2 --input-device 1 --output-device 1 --mode DATAC1 \
     --rigctld-port 4532 --kiss-tcp-port 8001 --kiss-tcp-address 0.0.0.0 \
-    --ptt-on-delay-ms 300 --ptt-off-delay-ms 200 --output-volume -6
+    --ptt-on-delay-ms 300 --ptt-off-delay-ms 200 --output-volume 0
 
 # For VOX mode (no CAT), use --rigctld-port 0
-# Reduce --output-volume to -10 or lower if radio ALC activates (power fluctuates)
+# Reduce --output-volume to -6 or lower if radio ALC activates (power fluctuates)
 ```
 
 ---

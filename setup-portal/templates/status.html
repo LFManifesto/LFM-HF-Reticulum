@@ -664,6 +664,56 @@
             <p>Password: <code>reticulumhf</code></p>
         </div>
 
+        <!-- CLI Commands -->
+        <div class="info-box">
+            <h3>CLI Commands (via SSH)</h3>
+            <table class="config-table" style="font-size: 0.8rem;">
+                <tr><td style="width: 45%;"><strong>ALSA Mixer (TUI)</strong></td><td>
+                    <div class="copy-box" style="margin: 2px 0;">
+                        <code id="cmd-alsamixer">alsamixer -c {{ audio_card if audio_card is not none else 'X' }}</code>
+                        <button class="copy-btn" onclick="copyText('cmd-alsamixer')">Copy</button>
+                    </div>
+                    <span style="color: var(--text-muted); font-size: 0.75rem;">Arrow keys to adjust, M to mute, ESC to exit</span>
+                </td></tr>
+                <tr><td><strong>Show ALSA Controls</strong></td><td>
+                    <div class="copy-box" style="margin: 2px 0;">
+                        <code id="cmd-amixer">amixer -c {{ audio_card if audio_card is not none else 'X' }} scontents</code>
+                        <button class="copy-btn" onclick="copyText('cmd-amixer')">Copy</button>
+                    </div>
+                </td></tr>
+                <tr><td><strong>Set Speaker (TX)</strong></td><td>
+                    <div class="copy-box" style="margin: 2px 0;">
+                        <code id="cmd-speaker">amixer -c {{ audio_card if audio_card is not none else 'X' }} sset Speaker 80%</code>
+                        <button class="copy-btn" onclick="copyText('cmd-speaker')">Copy</button>
+                    </div>
+                </td></tr>
+                <tr><td><strong>Set Mic Capture (RX)</strong></td><td>
+                    <div class="copy-box" style="margin: 2px 0;">
+                        <code id="cmd-capture">amixer -c {{ audio_card if audio_card is not none else 'X' }} cset name='Mic Capture Volume' 75%</code>
+                        <button class="copy-btn" onclick="copyText('cmd-capture')">Copy</button>
+                    </div>
+                </td></tr>
+                <tr><td><strong>Disable AGC</strong></td><td>
+                    <div class="copy-box" style="margin: 2px 0;">
+                        <code id="cmd-agc">amixer -c {{ audio_card if audio_card is not none else 'X' }} sset 'Auto Gain Control' off</code>
+                        <button class="copy-btn" onclick="copyText('cmd-agc')">Copy</button>
+                    </div>
+                </td></tr>
+                <tr><td><strong>Service Status</strong></td><td>
+                    <div class="copy-box" style="margin: 2px 0;">
+                        <code id="cmd-status">systemctl status freedvtnc2 rigctld reticulumhf-rnsd</code>
+                        <button class="copy-btn" onclick="copyText('cmd-status')">Copy</button>
+                    </div>
+                </td></tr>
+                <tr><td><strong>View freedvtnc2 Logs</strong></td><td>
+                    <div class="copy-box" style="margin: 2px 0;">
+                        <code id="cmd-logs">journalctl -u freedvtnc2 -f</code>
+                        <button class="copy-btn" onclick="copyText('cmd-logs')">Copy</button>
+                    </div>
+                </td></tr>
+            </table>
+        </div>
+
         <!-- Troubleshooting -->
         <div class="info-box">
             <h3>Troubleshooting</h3>

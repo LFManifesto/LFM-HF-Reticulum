@@ -1,6 +1,6 @@
 # ReticulumHF
 
-**Current Version:** v0.2.2-alpha
+**Current Version:** v0.2.3-alpha
 
 Reticulum mesh networking over HF radio via FreeDV modem. Raspberry Pi image that creates a WiFi gateway for Sideband/MeshChat to communicate over HF.
 
@@ -141,6 +141,7 @@ All clients (Sideband, MeshChat, Columba) use the same settings:
 
 | Version | Changes |
 |---------|---------|
+| v0.2.3-alpha | Auto-set ALSA defaults on setup (Speaker 80%, Mic Capture 75%, AGC off), CLI commands section in status UI |
 | v0.2.2-alpha | ALSA control fixes (Mic Capture vs Playback), radio-specific ALC guidance, improved UI |
 | v0.2.1-alpha | TX audio fix: 0 dB default (was -6), ALSA 80% (was 64%) |
 | v0.2.0-alpha | Transport bridging fix (boundary mode), TX audio control, unified port 4242, troubleshooting UI |

@@ -255,7 +255,7 @@ def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int
         serial_port: Serial port for radio CAT control
         audio_card: ALSA audio card number
         freedv_mode: FreeDV data mode (DATAC1, DATAC3, DATAC4)
-        tx_output_volume: TX audio output volume in dB (-20 to 0, default -6)
+        tx_output_volume: TX audio output volume in dB (-20 to 0, default 0)
     """
     radio = get_radio_by_id(radio_id)
     if not radio:
@@ -875,6 +875,9 @@ def api_complete_setup():
         # Update ALSA configuration with the correct audio card number
         # This fixes "Unknown PCM cards.pcm.modem" errors in freedvtnc2
         update_alsa_config(audio_card)
+
+        # Set ALSA mixer levels to defaults (Speaker 80%, Mic Capture 75%, AGC off)
+        set_audio_levels(audio_card, speaker_pct=80, mic_pct=75)
 
         # Generate service environment file
         # Default TX output volume is 0 dB (full scale) - control levels via ALSA and radio menu
