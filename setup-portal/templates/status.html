@@ -402,7 +402,7 @@
         <header>
             <h1>ReticulumHF Gateway</h1>
             <p class="subtitle" id="radio-config">Loading...</p>
-            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.1.0-alpha</p>
+            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.2.0-alpha</p>
         </header>
 
         <!-- Gateway Status -->
@@ -413,7 +413,7 @@
                 <span id="gateway-status-text">Checking...</span>
             </div>
             <p style="color: var(--text-muted); font-size: 0.8rem;">
-                Sideband/Columba connect to port 4242. MeshChat connects to port 8001 with KISS framing.
+                Sideband, Columba, and MeshChat connect via TCP Client Interface on port 4242.
             </p>
         </div>
 
@@ -471,7 +471,7 @@
 
             <!-- ALSA Mixer Controls -->
             <div id="alsa-sliders" class="audio-monitor" style="margin-top: 12px; display: none;">
-                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">ALSA Mixer</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">ALSA Mixer (RX)</div>
                 <div id="mic-slider" class="slider-control" style="display: none;">
                     <div class="slider-label">Input (Mic)</div>
                     <div class="slider-row">
@@ -488,6 +488,25 @@
                 </div>
                 <div id="no-alsa-msg" style="font-size: 0.8rem; color: var(--warning); display: none;">
                     No ALSA controls. Adjust levels in radio menu.
+                </div>
+            </div>
+
+            <!-- TX Audio Level -->
+            <div class="audio-monitor" style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;">
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">TX Audio Level</div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
+                    Adjust if radio power fluctuates during TX (ALC kicking in). Lower = less distortion.
+                </p>
+                <div class="slider-control">
+                    <div class="slider-label">Output Volume</div>
+                    <div class="slider-row">
+                        <input type="range" min="-20" max="0" value="-6" id="tx-audio-range" onchange="setTxAudio(this.value)">
+                        <span class="slider-value" id="tx-audio-value">-6 dB</span>
+                    </div>
+                </div>
+                <div id="tx-audio-status" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;"></div>
+                <div id="alc-warning" style="display: none; font-size: 0.75rem; color: var(--warning); margin-top: 4px;">
+                    ⚠ High setting may cause ALC activation. Reduce if power fluctuates.
                 </div>
             </div>
         </div>
@@ -584,8 +603,12 @@
         <!-- Connection Info -->
         <div class="info-box">
             <h3>Connect with Sideband/Columba</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
+                Settings → Connectivity → Add Interface → <strong>TCP Client</strong>
+            </p>
             <table class="config-table">
-                <tr><td>Host</td><td><code id="gateway-host">{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
+                <tr><td>Interface Type</td><td><code>TCP Client Interface</code></td></tr>
+                <tr><td>Address</td><td><code id="gateway-host">{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
                 <tr><td>Port</td><td><code>4242</code></td></tr>
                 <tr><td>IFAC Name</td><td><code id="ifac-name-display">(not set)</code></td></tr>
                 <tr><td>IFAC Pass</td><td><code id="ifac-pass-display">(not set)</code></td></tr>
@@ -594,11 +617,15 @@
 
         <div class="info-box">
             <h3>Connect with MeshChat</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
+                Settings → Interfaces → Add → <strong>TCP Client Interface</strong>
+            </p>
             <table class="config-table">
-                <tr><td>Host</td><td><code>{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
-                <tr><td>Port</td><td><code>8001</code></td></tr>
-                <tr><td>KISS Framing</td><td><code>YES</code></td></tr>
-                <tr><td>Bitrate</td><td><code>290</code> (DATAC1)</td></tr>
+                <tr><td>Interface Type</td><td><code>TCP Client Interface</code></td></tr>
+                <tr><td>Target Host</td><td><code>{{ system_info.ip_address or '192.168.4.1' }}</code></td></tr>
+                <tr><td>Target Port</td><td><code>4242</code></td></tr>
+                <tr><td>IFAC Name</td><td><code id="ifac-name-display-mc">(not set)</code></td></tr>
+                <tr><td>IFAC Pass</td><td><code id="ifac-pass-display-mc">(not set)</code></td></tr>
             </table>
         </div>
 
@@ -617,6 +644,18 @@
                 <button class="copy-btn" onclick="copyText('ssh-cmd')">Copy</button>
             </div>
             <p>Password: <code>reticulumhf</code></p>
+        </div>
+
+        <!-- Troubleshooting -->
+        <div class="info-box">
+            <h3>Troubleshooting</h3>
+            <table class="config-table" style="font-size: 0.8rem;">
+                <tr><td style="width: 45%;">Radio power fluctuates (4-10W)</td><td>Reduce TX Audio Level (ALC is activating)</td></tr>
+                <tr><td>No signal on RX meter</td><td>Check radio audio output level, ALSA Mic level</td></tr>
+                <tr><td>Can't connect from phone</td><td>Verify WiFi connected, check interface settings match</td></tr>
+                <tr><td>freedvtnc2 won't start</td><td>Check rigctld running first (CAT control)</td></tr>
+                <tr><td>rnsd won't connect</td><td>Verify freedvtnc2 is running on port 8001</td></tr>
+            </table>
         </div>
 
         <!-- Actions -->
@@ -680,8 +719,71 @@
                 if (data.freedv_mode) {
                     document.getElementById('freedv-mode-select').value = data.freedv_mode;
                 }
+                // Load TX audio level
+                fetchTxAudio();
             } catch (err) {
                 document.getElementById('radio-config').textContent = 'Error loading config';
+            }
+        }
+
+        // TX Audio Level
+        async function fetchTxAudio() {
+            try {
+                const response = await apiFetch('/api/tx-audio');
+                const data = await response.json();
+                if (data.success) {
+                    const slider = document.getElementById('tx-audio-range');
+                    const valueEl = document.getElementById('tx-audio-value');
+                    slider.value = data.tx_output_volume;
+                    valueEl.textContent = data.tx_output_volume + ' dB';
+                    updateAlcWarning(data.tx_output_volume);
+                }
+            } catch (err) {
+                console.error('Failed to fetch TX audio:', err);
+            }
+        }
+
+        function updateAlcWarning(volume) {
+            const warning = document.getElementById('alc-warning');
+            // Show warning if volume is higher than -4 dB (too hot)
+            if (volume > -4) {
+                warning.style.display = 'block';
+            } else {
+                warning.style.display = 'none';
+            }
+        }
+
+        async function setTxAudio(value) {
+            const valueEl = document.getElementById('tx-audio-value');
+            const statusEl = document.getElementById('tx-audio-status');
+            valueEl.textContent = value + ' dB';
+            updateAlcWarning(parseInt(value));
+
+            statusEl.textContent = 'Applying...';
+            statusEl.style.color = 'var(--warning)';
+
+            try {
+                const response = await fetch('/api/tx-audio', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({tx_output_volume: parseInt(value)})
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    statusEl.textContent = 'Applied. Modem restarting...';
+                    statusEl.style.color = 'var(--success)';
+                    setTimeout(() => {
+                        statusEl.textContent = '';
+                        checkServiceStatus();
+                    }, 3000);
+                } else {
+                    statusEl.textContent = 'Error: ' + (data.error || 'Failed');
+                    statusEl.style.color = 'var(--error)';
+                }
+            } catch (err) {
+                statusEl.textContent = 'Error: ' + err.message;
+                statusEl.style.color = 'var(--error)';
             }
         }
 
@@ -752,10 +854,14 @@
                 }
 
                 if (data.gateway) {
-                    document.getElementById('ifac-name-display').textContent =
-                        data.gateway.ifac_name || '(not set)';
-                    document.getElementById('ifac-pass-display').textContent =
-                        data.gateway.ifac_pass_set ? '(set)' : '(not set)';
+                    const ifacName = data.gateway.ifac_name || '(not set)';
+                    const ifacPass = data.gateway.ifac_pass_set ? '(set)' : '(not set)';
+                    // Sideband section
+                    document.getElementById('ifac-name-display').textContent = ifacName;
+                    document.getElementById('ifac-pass-display').textContent = ifacPass;
+                    // MeshChat section
+                    document.getElementById('ifac-name-display-mc').textContent = ifacName;
+                    document.getElementById('ifac-pass-display-mc').textContent = ifacPass;
                 }
 
             } catch (err) {

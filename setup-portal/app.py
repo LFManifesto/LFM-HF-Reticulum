@@ -183,12 +183,13 @@ def generate_reticulum_config(radio_id: str, serial_port: str, audio_card: int,
         "",
         "  # Gateway interface for Sideband/Columba connections",
         "  # Phone connects to this via TCPClientInterface",
+        "  # Boundary mode prevents high-speed TCP announces from flooding slow HF link",
         "  [[TCP Gateway]]",
         "    type = TCPServerInterface",
         "    enabled = yes",
         "    listen_ip = 0.0.0.0",
         "    listen_port = 4242",
-        "    mode = gateway",
+        "    mode = boundary",
     ]
 
     # Add IFAC security if configured
@@ -244,7 +245,8 @@ def get_freedvtnc2_device_id(alsa_card: int) -> int:
 
 
 def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int,
-                                  freedv_mode: str = "DATAC1") -> str:
+                                  freedv_mode: str = "DATAC1",
+                                  tx_output_volume: int = -6) -> str:
     """
     Generate freedvtnc2 launch command.
 
@@ -253,6 +255,7 @@ def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int
         serial_port: Serial port for radio CAT control
         audio_card: ALSA audio card number
         freedv_mode: FreeDV data mode (DATAC1, DATAC3, DATAC4)
+        tx_output_volume: TX audio output volume in dB (-20 to 0, default -6)
     """
     radio = get_radio_by_id(radio_id)
     if not radio:
@@ -262,6 +265,9 @@ def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int
     valid_modes = ["DATAC0", "DATAC1", "DATAC3", "DATAC4", "DATAC13", "DATAC14"]
     if freedv_mode not in valid_modes:
         freedv_mode = "DATAC1"  # Default to DATAC1 if invalid
+
+    # Validate TX output volume (clamp to safe range)
+    tx_output_volume = max(-20, min(0, int(tx_output_volume)))
 
     # Map ALSA card to freedvtnc2 device ID
     device_id = get_freedvtnc2_device_id(audio_card)
@@ -286,7 +292,7 @@ def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int
         "--kiss-tcp-address 0.0.0.0",
         f"--ptt-on-delay-ms {ptt_on_delay}",
         f"--ptt-off-delay-ms {ptt_off_delay}",
-        "--output-volume -3"
+        f"--output-volume {tx_output_volume}"
     ]
 
     return " ".join(cmd_parts)
@@ -551,6 +557,108 @@ def api_audio_level_get(card, control):
     return jsonify(result)
 
 
+@app.route("/api/tx-audio")
+def api_tx_audio_get():
+    """Get current TX audio output level."""
+    env_file = Path("/etc/reticulumhf/config.env")
+    tx_volume = -6  # default
+
+    if env_file.exists():
+        try:
+            content = env_file.read_text()
+            for line in content.split('\n'):
+                if line.startswith("TX_OUTPUT_VOLUME="):
+                    tx_volume = int(line.split("=", 1)[1].strip())
+                    break
+        except Exception:
+            pass
+
+    return jsonify({
+        "success": True,
+        "tx_output_volume": tx_volume,
+        "min": -20,
+        "max": 0,
+        "unit": "dB",
+        "hint": "Reduce if radio power fluctuates (ALC kicking in). -6 to -10 is typical."
+    })
+
+
+@app.route("/api/tx-audio", methods=["POST"])
+def api_tx_audio_set():
+    """Set TX audio output level and restart freedvtnc2."""
+    data = request.get_json()
+    new_volume = data.get("tx_output_volume")
+
+    if new_volume is None:
+        return jsonify({"success": False, "error": "Missing tx_output_volume"}), 400
+
+    try:
+        new_volume = int(new_volume)
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid tx_output_volume"}), 400
+
+    # Clamp to safe range
+    new_volume = max(-20, min(0, new_volume))
+
+    env_file = Path("/etc/reticulumhf/config.env")
+    if not env_file.exists():
+        return jsonify({"success": False, "error": "Configuration not found. Run setup first."}), 400
+
+    try:
+        # Read current config
+        config_lines = []
+        radio_id = None
+        serial_port = None
+        audio_card = None
+        freedv_mode = "DATAC1"
+
+        with open(env_file) as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped.startswith("RADIO_ID="):
+                    radio_id = stripped.split("=", 1)[1]
+                elif stripped.startswith("SERIAL_PORT="):
+                    serial_port = stripped.split("=", 1)[1]
+                elif stripped.startswith("AUDIO_CARD="):
+                    try:
+                        audio_card = int(stripped.split("=", 1)[1])
+                    except ValueError:
+                        pass
+                elif stripped.startswith("FREEDV_MODE="):
+                    freedv_mode = stripped.split("=", 1)[1]
+
+                # Update TX_OUTPUT_VOLUME line
+                if stripped.startswith("TX_OUTPUT_VOLUME="):
+                    config_lines.append(f"TX_OUTPUT_VOLUME={new_volume}\n")
+                # Update FREEDVTNC2_CMD line
+                elif stripped.startswith("FREEDVTNC2_CMD="):
+                    if radio_id and audio_card is not None:
+                        new_cmd = generate_freedvtnc2_command(
+                            radio_id, serial_port or "", audio_card, freedv_mode, new_volume
+                        )
+                        config_lines.append(f'FREEDVTNC2_CMD="{new_cmd}"\n')
+                    else:
+                        config_lines.append(line)
+                else:
+                    config_lines.append(line if line.endswith('\n') else line + '\n')
+
+        # Write updated config
+        with open(env_file, "w") as f:
+            f.writelines(config_lines)
+
+        # Restart freedvtnc2 service
+        subprocess.run(["systemctl", "restart", "freedvtnc2"], capture_output=True, timeout=10)
+
+        return jsonify({
+            "success": True,
+            "tx_output_volume": new_volume,
+            "message": f"TX audio set to {new_volume} dB. Modem restarting..."
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 def validate_wifi_settings(ssid: str, password: str) -> Tuple[bool, str]:
     """
     Validate WiFi SSID and password.
@@ -769,6 +877,8 @@ def api_complete_setup():
         update_alsa_config(audio_card)
 
         # Generate service environment file
+        # Default TX output volume is -6 dB (safe for most radios, avoids ALC)
+        tx_output_volume = -6
         env_content = f"""# ReticulumHF Service Configuration
 # Generated by setup wizard
 
@@ -777,11 +887,14 @@ SERIAL_PORT={serial_port}
 AUDIO_CARD={audio_card}
 FREEDV_MODE={freedv_mode}
 
+# TX audio level (dB) - reduce if radio power fluctuates (ALC kicking in)
+TX_OUTPUT_VOLUME={tx_output_volume}
+
 # rigctld command
 RIGCTLD_CMD="{generate_rigctld_command(radio_id, serial_port)}"
 
 # freedvtnc2 command
-FREEDVTNC2_CMD="{generate_freedvtnc2_command(radio_id, serial_port, audio_card, freedv_mode)}"
+FREEDVTNC2_CMD="{generate_freedvtnc2_command(radio_id, serial_port, audio_card, freedv_mode, tx_output_volume)}"
 
 # WiFi AP settings (for Sideband connections)
 RETICULUMHF_AP_SSID={wifi_ssid}
@@ -1093,6 +1206,7 @@ def api_set_freedv_mode():
         radio_id = None
         serial_port = None
         audio_card = None
+        tx_output_volume = -6  # default
 
         with open(env_file) as f:
             for line in f:
@@ -1106,6 +1220,11 @@ def api_set_freedv_mode():
                         audio_card = int(stripped.split("=", 1)[1])
                     except ValueError:
                         pass
+                elif stripped.startswith("TX_OUTPUT_VOLUME="):
+                    try:
+                        tx_output_volume = int(stripped.split("=", 1)[1])
+                    except ValueError:
+                        pass
 
                 # Update FREEDV_MODE line
                 if stripped.startswith("FREEDV_MODE="):
@@ -1113,7 +1232,9 @@ def api_set_freedv_mode():
                 # Update FREEDVTNC2_CMD line
                 elif stripped.startswith("FREEDVTNC2_CMD="):
                     if radio_id and audio_card is not None:
-                        new_cmd = generate_freedvtnc2_command(radio_id, serial_port or "", audio_card, new_mode)
+                        new_cmd = generate_freedvtnc2_command(
+                            radio_id, serial_port or "", audio_card, new_mode, tx_output_volume
+                        )
                         config_lines.append(f'FREEDVTNC2_CMD="{new_cmd}"\n')
                     else:
                         config_lines.append(line)
