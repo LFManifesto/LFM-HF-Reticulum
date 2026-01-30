@@ -1,16 +1,17 @@
 # ReticulumHF
 
-**v0.3.2-alpha** - Reticulum networking over HF radio using FreeDV data modes.
+**v0.3.2-alpha** - Reticulum mesh networking over HF radio using FreeDV data modes.
 
 ## What It Does
 
-Raspberry Pi gateway that bridges Reticulum networks over HF radio. Provides encrypted communication without internet infrastructure.
+Raspberry Pi multi-interface transport node. Bridges Reticulum networks over HF radio and I2P. Encrypted mesh communication without internet infrastructure.
 
+- Multi-interface transport (HF + I2P + TCP)
+- Operating modes: Hybrid, HF Only, Internet Only
+- TX gating (HF only transmits during beacon windows)
 - Web setup wizard and operator dashboard
 - JS8Call integration (station discovery)
 - TAK/CoT push (map markers)
-- Hybrid beacon/ARQ protocol
-- FreeDV modes: DATAC4 (beacon), DATAC1 (data transfer)
 
 ## Quick Start
 
@@ -21,14 +22,47 @@ Raspberry Pi gateway that bridges Reticulum networks over HF radio. Provides enc
 5. Complete setup wizard
 6. Connect clients to `192.168.4.1:4242` (TCP Client Interface)
 
+**Optional:** Connect ethernet for internet backhaul (I2P transport, NAT for WiFi clients).
+
+## Operating Modes
+
+| Mode | HF TX | I2P | Use Case |
+|------|-------|-----|----------|
+| Hybrid | Beacon windows only | Enabled | Normal ops - I2P bulk, HF discovery |
+| HF Only | Full control | Disabled | Field ops, no internet |
+| Internet Only | Disabled | Enabled | Radio maintenance |
+
 ## Network
 
 | Setting | Value |
 |---------|-------|
-| WiFi | ReticulumHF / reticulumhf |
+| WiFi AP | ReticulumHF / reticulumhf |
 | Web Portal | http://192.168.4.1 |
 | Client Port | 4242 (TCP Client Interface) |
 | SSH | pi / reticulumhf |
+| I2P Peer | Lightfighter node (default) |
+
+## Architecture
+
+```
+                    ┌─────────────────┐
+                    │   I2P Network   │
+                    └────────┬────────┘
+                             │
+┌─────────────┐    ┌────────▼────────┐    ┌─────────────┐
+│ WiFi Client │───►│   Pi Gateway    │◄───│  Ethernet   │
+│ (Sideband)  │    │  Multi-Iface    │    │  (Internet) │
+└─────────────┘    └────────┬────────┘    └─────────────┘
+     :4242                  │
+                   ┌────────▼────────┐
+                   │  FreeDV Modem   │
+                   │  (TX Gated)     │
+                   └────────┬────────┘
+                            │
+                   ┌────────▼────────┐
+                   │    HF Radio     │
+                   └─────────────────┘
+```
 
 ## Tested Hardware
 
@@ -44,34 +78,6 @@ Raspberry Pi gateway that bridges Reticulum networks over HF radio. Provides enc
 |------|---------|---------|-----|
 | DATAC4 | 87 bps | -4 dB | Beacons, weak signals |
 | DATAC1 | 980 bps | 3 dB | Data transfer |
-
-All stations must use the same mode to communicate.
-
-## Architecture
-
-```
-Client (Sideband/MeshChat) → WiFi → Pi Gateway → Digirig → HF Radio → RF
-                            4242      8001/8002
-```
-
-- Port 4242: Reticulum gateway (boundary mode)
-- Port 8001: freedvtnc2 KISS
-- Port 8002: freedvtnc2 command interface
-
-## Manual Install
-
-```bash
-# Prerequisites
-sudo apt install -y git build-essential cmake python3-pip pipx portaudio19-dev
-
-# Codec2
-git clone https://github.com/drowe67/codec2.git
-cd codec2 && mkdir build && cd build
-cmake .. && make && sudo make install && sudo ldconfig
-
-# Reticulum + FreeDV
-pipx install rns freedvtnc2
-```
 
 ## References
 
