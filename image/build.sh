@@ -102,6 +102,8 @@ sudo mkdir -p "$MOUNT_DIR/opt/reticulumhf"
 sudo cp -r "$PROJECT_DIR/setup-portal" "$MOUNT_DIR/opt/reticulumhf/"
 sudo cp -r "$PROJECT_DIR/configs" "$MOUNT_DIR/opt/reticulumhf/"
 sudo cp -r "$PROJECT_DIR/scripts" "$MOUNT_DIR/opt/reticulumhf/"
+sudo cp -r "$PROJECT_DIR/beacon" "$MOUNT_DIR/opt/reticulumhf/"
+sudo cp -r "$PROJECT_DIR/docs" "$MOUNT_DIR/opt/reticulumhf/"
 
 sudo cp "$PROJECT_DIR/services/"*.service "$MOUNT_DIR/etc/systemd/system/"
 

@@ -72,10 +72,13 @@ HF Radio --> RF --> Remote Station
 | `setup-portal/templates/status.html` | Status page UI |
 | `setup-portal/templates/setup.html` | Setup wizard UI |
 | `setup-portal/hardware.py` | Hardware detection (serial, audio, radios) |
+| `beacon/scheduler.py` | Hybrid beacon/ARQ mode scheduler (experimental) |
 | `configs/radios.json` | Supported radio definitions |
+| `configs/beacon.json` | Beacon scheduler configuration |
 | `image/build.sh` | Pi image build script (run on pi2) |
 | `scripts/first-boot.sh` | First boot setup (WiFi AP, services) |
 | `services/*.service` | Systemd service files |
+| `docs/BEACON_PROTOCOL.md` | Beacon protocol design document |
 
 ## freedvtnc2-lfm Fork
 
@@ -87,6 +90,46 @@ v0.3.0 uses a custom fork of freedvtnc2 with TCP command interface:
 - **Commands:** PING, STATUS, MODE, VOLUME, LEVELS, PTT TEST
 
 The portal uses `freedvtnc2_command()` helper in app.py to send commands via port 8002.
+
+## Beacon Protocol (Experimental)
+
+Hybrid stateless/ARQ approach for HF mesh discovery. See `docs/BEACON_PROTOCOL.md` for full design.
+
+**Problem:** Traditional Reticulum announcements are too slow/unreliable on HF.
+
+**Solution:** Lightweight beacons (~8 sec) with FEC for discovery, normal Reticulum for data.
+
+| Mode | FreeDV | Bitrate | Min SNR | Purpose |
+|------|--------|---------|---------|---------|
+| Beacon | DATAC4 | 87 bps | -4 dB | Discovery (8 sec) |
+| ARQ | DATAC1 | 980 bps | 5 dB | Data transfer |
+
+**Network Integration:**
+- Beacon discovery feeds into Reticulum's routing
+- Your node bridges HF to other interfaces (LoRa, I2P, TCP)
+- Peers discovered on HF become reachable from all your interfaces
+
+**Components:**
+| File | Purpose |
+|------|---------|
+| `beacon/scheduler.py` | Main daemon - mode switching, TX/RX |
+| `beacon/rns_bridge.py` | Reticulum integration - path requests |
+| `beacon/test_beacon.py` | Two-station testing |
+
+**Testing:**
+```bash
+# Check freedvtnc2 connection
+python3 beacon/test_beacon.py --test-connection
+
+# Listen for beacons (60 sec)
+python3 beacon/test_beacon.py --rx --duration 60
+
+# Transmit single beacon
+python3 beacon/test_beacon.py --tx --id "abc123" --message "W1XYZ FN42"
+
+# Full scheduler with RNS integration
+python3 beacon/scheduler.py --verbose
+```
 
 ## Configuration
 

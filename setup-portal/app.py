@@ -5,12 +5,16 @@ Runs as a captive portal on first boot for zero-config setup.
 """
 
 import json
+import logging
 import os
 import shutil
 import socket
 import subprocess
+import threading
 import time
 from datetime import datetime
+
+log = logging.getLogger('reticulumhf-portal')
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -24,6 +28,8 @@ from hardware import (
     get_audio_levels, get_audio_level_single, set_single_audio_control,
     get_single_audio_control
 )
+from dashboard import dashboard_bp, state as dashboard_state, start_rx_monitor
+from js8call import js8call_bp, init_client as init_js8call_client
 
 # Configuration constants
 FREEDVTNC2_STARTUP_TIMEOUT_SECS = 15  # Wait for freedvtnc2 to start listening
@@ -58,6 +64,10 @@ def freedvtnc2_command(command: str, timeout: float = FREEDVTNC2_CMD_TIMEOUT) ->
         return False, f"ERROR {str(e)}"
 
 app = Flask(__name__)
+
+# Register blueprints
+app.register_blueprint(dashboard_bp)
+app.register_blueprint(js8call_bp)
 
 
 @app.after_request
@@ -382,6 +392,13 @@ def status():
                            system_info=get_system_info())
 
 
+@app.route("/dashboard")
+def dashboard():
+    """Enhanced beacon dashboard with map and peer visualization."""
+    return render_template("dashboard.html",
+                           system_info=get_system_info())
+
+
 @app.route("/api/detect-hardware")
 def api_detect_hardware():
     """API endpoint to detect connected hardware."""
@@ -678,9 +695,9 @@ def api_tx_audio_set():
 
             with open(env_file, "w") as f:
                 f.writelines(config_lines)
-        except Exception:
+        except Exception as e:
             # Config update failed but volume change succeeded - log but don't fail
-            pass
+            log.warning(f"Failed to persist TX volume to config: {e}")
 
     return jsonify({
         "success": True,
@@ -725,7 +742,75 @@ def api_modem_levels():
                     levels[key.lower()] = float(value)
                 except ValueError:
                     levels[key.lower()] = value
+
+    # Update dashboard RX history
+    if "rx" in levels and levels["rx"] is not None:
+        try:
+            dashboard_state.add_rx_reading(float(levels["rx"]))
+        except (ValueError, TypeError):
+            pass
+
     return jsonify(levels)
+
+
+@app.route("/api/beacon/status")
+def api_beacon_status():
+    """Get beacon scheduler status."""
+    # Try to read beacon scheduler status from shared state or socket
+    beacon_config_path = Path("/etc/reticulumhf/beacon.json")
+
+    status = {
+        "enabled": False,
+        "running": False,
+        "mode": "idle",
+        "beacon_mode": "DATAC4",
+        "arq_mode": "DATAC1",
+        "next_beacon": None,
+        "last_beacon": None,
+        "peer_count": len(dashboard_state.peers),
+        "tx_beacon": False,
+    }
+
+    # Check if beacon service is running
+    try:
+        result = subprocess.run(
+            ["systemctl", "is-active", "reticulumhf-beacon"],
+            capture_output=True, text=True, timeout=5
+        )
+        status["running"] = result.stdout.strip() == "active"
+    except Exception:
+        pass
+
+    # Load beacon config if exists
+    if beacon_config_path.exists():
+        try:
+            with open(beacon_config_path) as f:
+                config = json.load(f)
+            status["enabled"] = True
+            status["beacon_mode"] = config.get("beacon_mode", "DATAC4")
+            status["arq_mode"] = config.get("arq_mode", "DATAC1")
+            status["tx_beacon"] = config.get("tx_beacon", False)
+            status["beacon_minutes"] = config.get("beacon_minutes", [0, 30])
+
+            # Calculate next beacon time
+            if status["beacon_minutes"]:
+                now = datetime.now()
+                current_minute = now.minute
+                for target in sorted(status["beacon_minutes"]):
+                    if target > current_minute:
+                        next_time = now.replace(minute=target, second=0, microsecond=0)
+                        status["next_beacon"] = next_time.isoformat()
+                        break
+                else:
+                    # Next hour
+                    next_hour = (now.hour + 1) % 24
+                    next_time = now.replace(hour=next_hour, minute=status["beacon_minutes"][0],
+                                           second=0, microsecond=0)
+                    status["next_beacon"] = next_time.isoformat()
+        except Exception:
+            pass
+
+    return jsonify(status)
 
 
 def validate_wifi_settings(ssid: str, password: str) -> Tuple[bool, str]:
@@ -1033,14 +1118,73 @@ RETICULUMHF_AP_PASS={wifi_password}
         # Start persistent WiFi AP for Sideband connections
         subprocess.run(["systemctl", "start", "reticulumhf-wlan"], capture_output=True)
 
+        # Create beacon.json config
+        beacon_config_path = env_dir / "beacon.json"
+        beacon_message = data.get("beacon_message", "")  # e.g., "W1ABC FN42"
+        tx_beacon = data.get("tx_beacon", False)
+
+        beacon_config = {
+            "beacon_minutes": [0, 30],
+            "beacon_duration_sec": 60,
+            "beacon_tx_delay_sec": 5,
+            "beacon_mode": "DATAC4",
+            "arq_mode": freedv_mode,
+            "freedvtnc2_cmd_host": "127.0.0.1",
+            "freedvtnc2_cmd_port": 8002,
+            "freedvtnc2_kiss_port": 8001,
+            "command_timeout": 5.0,
+            "station_id": "",  # Will be populated from Reticulum identity
+            "beacon_message": beacon_message,
+            "auto_switch": True,
+            "tx_beacon": tx_beacon,
+            "adaptive_mode": False,
+            "dashboard_url": "http://127.0.0.1/api/dashboard/peers"
+        }
+        with open(beacon_config_path, "w") as f:
+            json.dump(beacon_config, f, indent=2)
+
+        # Create js8call.json config
+        js8_config_path = env_dir / "js8call.json"
+        js8_enabled = data.get("js8_enabled", False)
+        js8_config = {
+            "enabled": js8_enabled,
+            "host": data.get("js8_host", "127.0.0.1"),
+            "port": data.get("js8_port", 2442),
+            "auto_heartbeat": False,
+            "heartbeat_with_beacon": True,
+            "bridge_messages": False,
+        }
+        with open(js8_config_path, "w") as f:
+            json.dump(js8_config, f, indent=2)
+
+        # Create tak.json config
+        tak_config_path = env_dir / "tak.json"
+        tak_enabled = data.get("tak_enabled", False)
+        tak_config = {
+            "enabled": tak_enabled,
+            "host": data.get("tak_host", ""),
+            "port": data.get("tak_port", 8087),
+            "protocol": "udp",
+        }
+        with open(tak_config_path, "w") as f:
+            json.dump(tak_config, f, indent=2)
+
+        # Enable beacon scheduler service (starts on next boot or manual start)
+        subprocess.run(["systemctl", "enable", "reticulumhf-beacon"], capture_output=True)
+
         return jsonify({
             "success": True,
-            "message": "Setup complete! Gateway ready for Sideband.",
+            "message": "Setup complete! Gateway ready.",
             "wifi_ssid": wifi_ssid,
             "wifi_changed": wifi_changed,
             "gateway_port": 4242,
             "ifac_name": ifac_name,
             "ifac_enabled": bool(ifac_name or ifac_pass),
+            "beacon_enabled": True,
+            "beacon_message": beacon_message,
+            "tx_beacon": tx_beacon,
+            "js8_enabled": js8_enabled,
+            "tak_enabled": tak_enabled,
             "reboot_required": False
         })
 
@@ -1357,7 +1501,7 @@ def api_set_freedv_mode():
                 f.writelines(config_lines)
         except Exception as e:
             # Config update failed but mode change succeeded - log but don't fail
-            pass
+            log.warning(f"Failed to persist FreeDV mode to config: {e}")
 
     return jsonify({"success": True, "mode": new_mode})
 
@@ -1541,17 +1685,26 @@ def captive_portal_detect():
     return redirect(url_for("index"))
 
 
+def _delayed_system_command(command: list, delay: float = 2.0):
+    """Execute a system command after a delay (in background thread)."""
+    def run():
+        time.sleep(delay)
+        subprocess.run(command, capture_output=True)
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+
 @app.route("/api/shutdown", methods=["POST"])
 def api_shutdown():
     """API endpoint to safely shut down the Pi."""
-    subprocess.Popen("sleep 2 && sudo poweroff", shell=True)
+    _delayed_system_command(["sudo", "poweroff"], delay=2.0)
     return jsonify({"success": True, "message": "Shutting down in 2 seconds..."})
 
 
 @app.route("/api/reboot", methods=["POST"])
 def api_reboot():
     """API endpoint to reboot the Pi."""
-    subprocess.Popen("sleep 2 && sudo reboot", shell=True)
+    _delayed_system_command(["sudo", "reboot"], delay=2.0)
     return jsonify({"success": True, "message": "Rebooting in 2 seconds..."})
 
 
@@ -1761,7 +1914,7 @@ def api_service_detail(service):
     """API endpoint to get detailed service status including failure reason."""
     allowed_services = [
         "reticulumhf-rnsd", "reticulumhf-portal", "reticulumhf-firstboot",
-        "hostapd", "dnsmasq", "rigctld", "freedvtnc2"
+        "reticulumhf-beacon", "hostapd", "dnsmasq", "rigctld", "freedvtnc2", "i2pd"
     ]
     if service not in allowed_services:
         return jsonify({"success": False, "error": f"Unknown service: {service}"}), 400
@@ -1793,7 +1946,168 @@ def api_service_detail(service):
         return jsonify({"success": False, "error": str(e)})
 
 
+@app.route("/api/beacon/control", methods=["POST"])
+def api_beacon_control():
+    """Control beacon scheduler service."""
+    data = request.get_json() or {}
+    action = data.get("action", "status")
+
+    if action not in ["start", "stop", "restart", "status"]:
+        return jsonify({"success": False, "error": f"Invalid action: {action}"}), 400
+
+    service = "reticulumhf-beacon"
+
+    if action == "status":
+        try:
+            result = subprocess.run(
+                ["systemctl", "is-active", service],
+                capture_output=True, text=True, timeout=5
+            )
+            return jsonify({
+                "success": True,
+                "running": result.stdout.strip() == "active"
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)})
+
+    try:
+        result = subprocess.run(
+            ["systemctl", action, service],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode == 0:
+            return jsonify({"success": True, "message": f"Beacon scheduler {action}ed"})
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.stderr.strip() or f"Failed to {action} beacon scheduler"
+            })
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": f"Timeout {action}ing beacon scheduler"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/beacon/config", methods=["GET"])
+def api_beacon_config_get():
+    """Get beacon scheduler configuration."""
+    config_path = Path("/etc/reticulumhf/beacon.json")
+    default_config = {
+        "beacon_minutes": [0, 30],
+        "beacon_duration_sec": 60,
+        "beacon_tx_delay_sec": 5,
+        "beacon_mode": "DATAC4",
+        "arq_mode": "DATAC1",
+        "station_id": "",
+        "beacon_message": "",
+        "auto_switch": True,
+        "tx_beacon": False,
+        "adaptive_mode": False
+    }
+
+    if config_path.exists():
+        try:
+            with open(config_path) as f:
+                config = json.load(f)
+            # Merge with defaults
+            return jsonify({**default_config, **config})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    return jsonify(default_config)
+
+
+@app.route("/api/beacon/config", methods=["POST"])
+def api_beacon_config_set():
+    """Update beacon scheduler configuration."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+
+    config_path = Path("/etc/reticulumhf/beacon.json")
+
+    # Load existing config
+    existing = {}
+    if config_path.exists():
+        try:
+            with open(config_path) as f:
+                existing = json.load(f)
+        except Exception:
+            pass
+
+    # Merge with new data
+    config = {**existing, **data}
+
+    # Validate
+    if "beacon_minutes" in config:
+        if not isinstance(config["beacon_minutes"], list):
+            return jsonify({"success": False, "error": "beacon_minutes must be a list"}), 400
+        for m in config["beacon_minutes"]:
+            if not isinstance(m, int) or m < 0 or m > 59:
+                return jsonify({"success": False, "error": "beacon_minutes must be 0-59"}), 400
+
+    # Write config
+    try:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=2)
+        return jsonify({"success": True, "config": config})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def get_modem_rx_level():
+    """Get current RX level from modem for monitoring."""
+    success, response = freedvtnc2_command("LEVELS")
+    if success and response.startswith("OK LEVELS "):
+        parts = response[10:].split()
+        for part in parts:
+            if part.startswith("RX="):
+                try:
+                    return float(part[3:])
+                except ValueError:
+                    pass
+    return None
+
+
+def startup_integrations():
+    """Start background integrations on app startup."""
+    # Start RX level monitoring for dashboard
+    start_rx_monitor(get_modem_rx_level, interval=5.0)
+
+    # Auto-connect to JS8Call if configured
+    js8_config_path = Path("/etc/reticulumhf/js8call.json")
+    if js8_config_path.exists():
+        try:
+            with open(js8_config_path) as f:
+                js8_config = json.load(f)
+            if js8_config.get("enabled", False):
+                host = js8_config.get("host", "127.0.0.1")
+                port = js8_config.get("port", 2442)
+                log.info(f"Auto-connecting to JS8Call at {host}:{port}")
+                init_js8call_client(host=host, port=port)
+        except Exception as e:
+            log.warning(f"Failed to auto-connect JS8Call: {e}")
+
+    # Load TAK config into dashboard state
+    tak_config_path = Path("/etc/reticulumhf/tak.json")
+    if tak_config_path.exists():
+        try:
+            with open(tak_config_path) as f:
+                tak_config = json.load(f)
+            dashboard_state.tak_enabled = tak_config.get("enabled", False)
+            dashboard_state.tak_host = tak_config.get("host", "")
+            dashboard_state.tak_port = tak_config.get("port", 8087)
+            dashboard_state.tak_protocol = tak_config.get("protocol", "udp")
+            if dashboard_state.tak_enabled:
+                log.info(f"TAK integration enabled: {dashboard_state.tak_host}:{dashboard_state.tak_port}")
+        except Exception as e:
+            log.warning(f"Failed to load TAK config: {e}")
+
+
 if __name__ == "__main__":
+    startup_integrations()
+
     # Production mode - use gunicorn in production, this is for testing only
     # WARNING: Do not use debug=True in production - security risk
     app.run(host="0.0.0.0", port=80, debug=False)

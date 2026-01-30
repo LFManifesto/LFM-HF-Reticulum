@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReticulumHF Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-card: #141414;
+            --accent: #c92a2a;
+            --accent-dim: #8b1a1a;
+            --text-primary: #f0f0f0;
+            --text-secondary: #888;
+            --text-muted: #666;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --info: #38bdf8;
+            --border: #2a2a2a;
+            --js8-color: #22d3ee;
+            --beacon-color: #c92a2a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.4;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Layout: Header + 3-column main */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .header-nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .header-nav a:hover, .header-nav a.active {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.online { background: var(--success); }
+        .status-dot.warning { background: var(--warning); }
+        .status-dot.offline { background: var(--danger); }
+
+        /* Main 3-column layout */
+        .main {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            gap: 0;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Left sidebar - Status & Controls */
+        .sidebar-left {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        /* Center - Map */
+        .center {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #map {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .map-legend {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.75rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        /* Right sidebar - Activity feed */
+        .sidebar-right {
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-header {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-tertiary);
+        }
+
+        .card-header h3 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .card-body {
+            padding: 0.75rem;
+        }
+
+        /* Health score */
+        .health-display {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .health-ring {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 4px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .health-ring.excellent { border-color: var(--success); }
+        .health-ring.good { border-color: var(--info); }
+        .health-ring.fair { border-color: var(--warning); }
+        .health-ring.poor { border-color: var(--danger); }
+
+        .health-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .health-label {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .health-details {
+            flex: 1;
+            font-size: 0.75rem;
+        }
+
+        .health-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.2rem 0;
+            color: var(--text-secondary);
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .stat-box {
+            background: var(--bg-tertiary);
+            padding: 0.5rem;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .stat-box.beacon .stat-value { color: var(--beacon-color); }
+        .stat-box.js8 .stat-value { color: var(--js8-color); }
+
+        /* RX Level mini chart */
+        .rx-mini {
+            height: 50px;
+        }
+
+        .rx-current {
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Band conditions */
+        .band-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.25rem;
+        }
+
+        .band-item {
+            padding: 0.25rem;
+            text-align: center;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            background: var(--bg-tertiary);
+        }
+
+        .band-item.excellent { background: rgba(74, 222, 128, 0.2); color: var(--success); }
+        .band-item.good { background: rgba(56, 189, 248, 0.2); color: var(--info); }
+        .band-item.fair { background: rgba(251, 191, 36, 0.2); color: var(--warning); }
+        .band-item.poor { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
+
+        /* Scheduler controls */
+        .scheduler-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .scheduler-mode {
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .scheduler-mode.beacon { background: var(--beacon-color); }
+        .scheduler-mode.arq { background: var(--info); }
+        .scheduler-mode.idle { background: var(--bg-tertiary); }
+
+        .scheduler-next {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .control-btns {
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }
+
+        /* Buttons */
+        .btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.35rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+
+        .btn:hover { background: var(--border); }
+        .btn-primary { background: var(--accent); border-color: var(--accent); }
+        .btn-primary:hover { background: var(--accent-dim); }
+        .btn-js8 { background: var(--js8-color); border-color: var(--js8-color); color: #000; }
+        .btn-sm { padding: 0.2rem 0.4rem; font-size: 0.65rem; }
+
+        /* Activity feed */
+        .feed-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .feed-tab {
+            flex: 1;
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+        }
+
+        .feed-tab:hover { color: var(--text-primary); }
+        .feed-tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--accent);
+        }
+        .feed-tab.active.js8 { border-bottom-color: var(--js8-color); }
+
+        .feed-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .feed-item {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.75rem;
+        }
+
+        .feed-item:last-child { border-bottom: none; }
+
+        .feed-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+
+        .feed-callsign {
+            font-weight: 600;
+        }
+
+        .feed-callsign.beacon { color: var(--beacon-color); }
+        .feed-callsign.js8 { color: var(--js8-color); }
+
+        .feed-time {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+        }
+
+        .feed-detail {
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+        }
+
+        /* Station table */
+        .station-table {
+            width: 100%;
+            font-size: 0.7rem;
+            border-collapse: collapse;
+        }
+
+        .station-table th {
+            text-align: left;
+            padding: 0.4rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.65rem;
+        }
+
+        .station-table td {
+            padding: 0.4rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .station-table tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .source-badge {
+            display: inline-block;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.6rem;
+            font-weight: 600;
+        }
+
+        .source-badge.beacon { background: var(--beacon-color); }
+        .source-badge.js8 { background: var(--js8-color); color: #000; }
+        .source-badge.both { background: linear-gradient(90deg, var(--beacon-color), var(--js8-color)); }
+
+        /* Integration cards */
+        .integration-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0;
+        }
+
+        .integration-row label {
+            flex: 1;
+            font-size: 0.75rem;
+        }
+
+        .integration-input {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.3rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            width: 100px;
+        }
+
+        .integration-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Toggle switch */
+        .toggle {
+            position: relative;
+            width: 36px;
+            height: 20px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-tertiary);
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background: var(--accent);
+        }
+
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(16px);
+            background: white;
+        }
+
+        /* Dark map tiles */
+        .leaflet-tile-pane {
+            filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+        }
+
+        /* Responsive: tablet */
+        @media (max-width: 1200px) {
+            .main {
+                grid-template-columns: 240px 1fr 280px;
+            }
+        }
+
+        /* Responsive: small tablet */
+        @media (max-width: 900px) {
+            .main {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+
+            .sidebar-left {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                gap: 0.5rem;
+                padding: 0.5rem;
+                overflow-x: auto;
+            }
+
+            .sidebar-left .card {
+                margin: 0;
+                min-width: 200px;
+            }
+
+            .sidebar-right {
+                border-left: none;
+                border-top: 1px solid var(--border);
+                max-height: 250px;
+            }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>ReticulumHF</h1>
+                <nav class="header-nav">
+                    <a href="/status">Status</a>
+                    <a href="/dashboard" class="active">Dashboard</a>
+                    <a href="/">Setup</a>
+                </nav>
+            </div>
+            <div class="header-status">
+                <div class="status-indicator">
+                    <span class="status-dot" id="beacon-status-dot"></span>
+                    <span>Beacon</span>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot" id="js8-status-dot"></span>
+                    <span>JS8Call</span>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot" id="modem-status-dot"></span>
+                    <span>Modem</span>
+                </div>
+                <button class="btn btn-sm" onclick="refreshAll()">Refresh</button>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="main">
+            <!-- Left sidebar -->
+            <aside class="sidebar-left">
+                <!-- Network Health -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Network Health</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="health-display">
+                            <div class="health-ring" id="health-ring">
+                                <span class="health-value" id="health-score">--</span>
+                                <span class="health-label">Score</span>
+                            </div>
+                            <div class="health-details" id="health-details">
+                                <div class="health-detail"><span>HF Peers</span><span id="health-peers">--</span></div>
+                                <div class="health-detail"><span>Signal</span><span id="health-signal">--</span></div>
+                                <div class="health-detail"><span>Interfaces</span><span id="health-ifaces">--</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Station counts -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Stations Heard</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-grid">
+                            <div class="stat-box beacon">
+                                <div class="stat-value" id="beacon-count">0</div>
+                                <div class="stat-label">Beacon</div>
+                            </div>
+                            <div class="stat-box js8">
+                                <div class="stat-value" id="js8-count">0</div>
+                                <div class="stat-label">JS8Call</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RX Level -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>RX Level</h3>
+                        <span id="rx-mode">--</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="rx-current" id="rx-current">-- dB</div>
+                        <div class="rx-mini">
+                            <canvas id="rx-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Band Conditions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Band Conditions</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="band-grid" id="band-grid">
+                            <div class="band-item">160m</div>
+                            <div class="band-item">80m</div>
+                            <div class="band-item">40m</div>
+                            <div class="band-item">30m</div>
+                            <div class="band-item">20m</div>
+                            <div class="band-item">17m</div>
+                            <div class="band-item">15m</div>
+                            <div class="band-item">12m</div>
+                            <div class="band-item">10m</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scheduler -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Beacon Scheduler</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="scheduler-status">
+                            <span class="scheduler-mode idle" id="scheduler-mode">IDLE</span>
+                            <span class="scheduler-next" id="scheduler-next">Next: --:--</span>
+                        </div>
+                        <div class="control-btns">
+                            <button class="btn btn-primary btn-sm" onclick="forceBeacon()">TX Beacon</button>
+                            <button class="btn btn-sm" id="btn-tx" onclick="toggleTx()">TX Off</button>
+                            <button class="btn btn-sm" onclick="controlScheduler('restart')">Restart</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JS8Call -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>JS8Call</h3>
+                        <span class="status-dot" id="js8-card-status"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="integration-row">
+                            <label>Connect</label>
+                            <label class="toggle">
+                                <input type="checkbox" id="js8-enabled" onchange="toggleJS8()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="integration-row">
+                            <label>Host</label>
+                            <input type="text" class="integration-input" id="js8-host" value="127.0.0.1" style="width:80px">
+                        </div>
+                        <div class="integration-row">
+                            <label>Port</label>
+                            <input type="number" class="integration-input" id="js8-port" value="2442" style="width:60px">
+                        </div>
+                        <div class="control-btns" style="margin-top:0.5rem">
+                            <button class="btn btn-js8 btn-sm" onclick="js8SendHB()">Send HB</button>
+                            <button class="btn btn-sm" onclick="js8SendCQ()">CQ</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAK -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>TAK Integration</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="integration-row">
+                            <label>Enable</label>
+                            <label class="toggle">
+                                <input type="checkbox" id="tak-enabled" onchange="updateTakConfig()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="integration-row">
+                            <label>Host</label>
+                            <input type="text" class="integration-input" id="tak-host" placeholder="192.168.1.x" style="width:100px">
+                        </div>
+                        <div class="integration-row">
+                            <label>Port</label>
+                            <input type="number" class="integration-input" id="tak-port" value="8087" style="width:60px">
+                        </div>
+                        <div class="control-btns" style="margin-top:0.5rem">
+                            <button class="btn btn-sm" onclick="takPushAll()">Push All</button>
+                            <button class="btn btn-sm" onclick="takTest()">Test</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center - Map -->
+            <section class="center">
+                <div id="map"></div>
+                <div class="map-legend">
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background:var(--beacon-color)"></span>
+                        <span>Beacon</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background:var(--js8-color)"></span>
+                        <span>JS8Call</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background:var(--success)"></span>
+                        <span>Strong (>-20dB)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background:var(--warning)"></span>
+                        <span>Medium</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background:var(--danger)"></span>
+                        <span>Weak (<-30dB)</span>
+                    </div>
+                    <div style="margin-left:auto; color:var(--text-muted)">
+                        <span id="map-station-count">0</span> stations on map
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right sidebar - Activity -->
+            <aside class="sidebar-right">
+                <div class="feed-tabs">
+                    <button class="feed-tab active" onclick="showFeed('all')">All</button>
+                    <button class="feed-tab" onclick="showFeed('beacon')">Beacon</button>
+                    <button class="feed-tab js8" onclick="showFeed('js8')">JS8Call</button>
+                    <button class="feed-tab" onclick="showFeed('messages')">Messages</button>
+                </div>
+                <div class="feed-content" id="feed-content">
+                    <div class="feed-item">
+                        <div class="feed-item-header">
+                            <span class="feed-callsign">Waiting for activity...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Station table -->
+                <div style="border-top:1px solid var(--border); padding:0.5rem; max-height:40%; overflow-y:auto;">
+                    <table class="station-table">
+                        <thead>
+                            <tr>
+                                <th>Call/ID</th>
+                                <th>Grid</th>
+                                <th>SNR</th>
+                                <th>Src</th>
+                            </tr>
+                        </thead>
+                        <tbody id="station-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script>
+        // State
+        let map = null;
+        let markers = {};
+        let rxChart = null;
+        let currentFeed = 'all';
+        let beaconPeers = [];
+        let js8Stations = [];
+        let allActivity = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            initRxChart();
+            refreshAll();
+            setInterval(refreshAll, 5000);
+        });
+
+        // Map
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([39.5, -98.5], 4);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18
+            }).addTo(map);
+        }
+
+        // RX Chart
+        function initRxChart() {
+            const ctx = document.getElementById('rx-chart').getContext('2d');
+            rxChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#c92a2a',
+                        backgroundColor: 'rgba(201,42,42,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        borderWidth: 1.5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            min: -50,
+                            max: 0,
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Refresh all data
+        async function refreshAll() {
+            await Promise.all([
+                fetchHealth(),
+                fetchBeaconPeers(),
+                fetchJS8Stations(),
+                fetchRxHistory(),
+                fetchBandConditions(),
+                fetchSchedulerStatus(),
+                fetchModemStatus(),
+                fetchJS8Status(),
+            ]);
+            updateMap();
+            updateStationTable();
+            updateFeed();
+        }
+
+        // Health
+        async function fetchHealth() {
+            try {
+                const res = await fetch('/api/dashboard/health');
+                const data = await res.json();
+
+                document.getElementById('health-score').textContent = data.score;
+                const ring = document.getElementById('health-ring');
+                ring.className = 'health-ring ' + data.status;
+
+                const factors = data.factors || [];
+                document.getElementById('health-peers').textContent =
+                    factors.find(f => f.name === 'HF Peers')?.detail || '--';
+                document.getElementById('health-signal').textContent =
+                    factors.find(f => f.name === 'Signal Quality')?.detail || '--';
+                document.getElementById('health-ifaces').textContent =
+                    factors.find(f => f.name === 'Interfaces')?.detail || '--';
+            } catch (e) {
+                console.error('Health fetch error:', e);
+            }
+        }
+
+        // Beacon peers
+        async function fetchBeaconPeers() {
+            try {
+                const res = await fetch('/api/dashboard/peers');
+                const data = await res.json();
+                beaconPeers = data.peers || [];
+                document.getElementById('beacon-count').textContent = beaconPeers.length;
+
+                // Add to activity
+                beaconPeers.forEach(p => {
+                    if (!allActivity.find(a => a.id === 'beacon-' + p.identity)) {
+                        allActivity.unshift({
+                            id: 'beacon-' + p.identity,
+                            type: 'beacon',
+                            callsign: p.callsign || p.identity_short,
+                            grid: p.grid,
+                            snr: p.rx_level_db,
+                            time: p.last_seen,
+                            detail: `Grid: ${p.grid || 'Unknown'} | RX: ${p.rx_level_db?.toFixed(1) || '--'} dB`
+                        });
+                    }
+                });
+            } catch (e) {
+                console.error('Beacon fetch error:', e);
+            }
+        }
+
+        // JS8Call stations
+        async function fetchJS8Stations() {
+            try {
+                const res = await fetch('/api/js8call/stations');
+                const data = await res.json();
+                js8Stations = data.stations || [];
+                document.getElementById('js8-count').textContent = js8Stations.length;
+
+                // Add to activity
+                js8Stations.forEach(s => {
+                    if (!allActivity.find(a => a.id === 'js8-' + s.callsign)) {
+                        allActivity.unshift({
+                            id: 'js8-' + s.callsign,
+                            type: 'js8',
+                            callsign: s.callsign,
+                            grid: s.grid,
+                            snr: s.snr,
+                            time: s.last_seen,
+                            detail: `Grid: ${s.grid || 'Unknown'} | SNR: ${s.snr} dB | ${s.frequency_khz?.toFixed(1)} kHz`
+                        });
+                    }
+                });
+            } catch (e) {
+                console.error('JS8 fetch error:', e);
+            }
+        }
+
+        // RX history
+        async function fetchRxHistory() {
+            try {
+                const res = await fetch('/api/dashboard/rx-history?minutes=30');
+                const data = await res.json();
+                const history = data.history || [];
+
+                if (history.length > 0) {
+                    const latest = history[history.length - 1];
+                    document.getElementById('rx-current').textContent =
+                        latest.db?.toFixed(1) + ' dB';
+                }
+
+                rxChart.data.labels = history.map((_, i) => i);
+                rxChart.data.datasets[0].data = history.map(h => h.db);
+                rxChart.update('none');
+            } catch (e) {
+                console.error('RX history error:', e);
+            }
+        }
+
+        // Band conditions
+        async function fetchBandConditions() {
+            try {
+                const res = await fetch('/api/dashboard/band-conditions');
+                const data = await res.json();
+                const conditions = data.conditions || [];
+
+                const grid = document.getElementById('band-grid');
+                grid.innerHTML = conditions.map(c =>
+                    `<div class="band-item ${c.quality}">${c.band}</div>`
+                ).join('');
+            } catch (e) {
+                console.error('Band conditions error:', e);
+            }
+        }
+
+        // Scheduler status
+        async function fetchSchedulerStatus() {
+            try {
+                const res = await fetch('/api/beacon/status');
+                const data = await res.json();
+
+                const modeEl = document.getElementById('scheduler-mode');
+                modeEl.textContent = data.mode?.toUpperCase() || 'IDLE';
+                modeEl.className = 'scheduler-mode ' + (data.mode || 'idle');
+
+                document.getElementById('scheduler-next').textContent =
+                    data.next_beacon ? 'Next: ' + new Date(data.next_beacon).toLocaleTimeString() : 'Next: --';
+
+                const dot = document.getElementById('beacon-status-dot');
+                dot.className = 'status-dot ' + (data.running ? 'online' : 'offline');
+
+                const txBtn = document.getElementById('btn-tx');
+                txBtn.textContent = data.tx_beacon ? 'TX On' : 'TX Off';
+                txBtn.className = data.tx_beacon ? 'btn btn-primary btn-sm' : 'btn btn-sm';
+            } catch (e) {
+                console.error('Scheduler status error:', e);
+            }
+        }
+
+        // Modem status
+        async function fetchModemStatus() {
+            try {
+                const res = await fetch('/api/modem-status');
+                const data = await res.json();
+
+                const dot = document.getElementById('modem-status-dot');
+                dot.className = 'status-dot ' + (data.online ? 'online' : 'offline');
+
+                if (data.mode) {
+                    document.getElementById('rx-mode').textContent = data.mode;
+                }
+            } catch (e) {
+                document.getElementById('modem-status-dot').className = 'status-dot offline';
+            }
+        }
+
+        // JS8 status
+        async function fetchJS8Status() {
+            try {
+                const res = await fetch('/api/js8call/status');
+                const data = await res.json();
+
+                const dot = document.getElementById('js8-status-dot');
+                const cardDot = document.getElementById('js8-card-status');
+                const connected = data.connected || false;
+
+                dot.className = 'status-dot ' + (connected ? 'online' : 'offline');
+                cardDot.className = 'status-dot ' + (connected ? 'online' : 'offline');
+
+                document.getElementById('js8-enabled').checked = connected;
+            } catch (e) {
+                document.getElementById('js8-status-dot').className = 'status-dot offline';
+            }
+        }
+
+        // Update map with all stations
+        function updateMap() {
+            // Clear old markers
+            Object.values(markers).forEach(m => map.removeLayer(m));
+            markers = {};
+
+            let count = 0;
+
+            // Add beacon peers
+            beaconPeers.forEach(p => {
+                if (p.lat && p.lon) {
+                    const color = getSignalColor(p.rx_level_db);
+                    const marker = L.circleMarker([p.lat, p.lon], {
+                        radius: 8,
+                        fillColor: '#c92a2a',
+                        color: color,
+                        weight: 3,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    marker.bindPopup(`
+                        <b>${p.callsign || p.identity_short}</b><br>
+                        <span style="color:#c92a2a">Beacon</span><br>
+                        Grid: ${p.grid}<br>
+                        RX: ${p.rx_level_db?.toFixed(1)} dB<br>
+                        Count: ${p.rx_count}
+                    `);
+
+                    markers['beacon-' + p.identity] = marker;
+                    count++;
+                }
+            });
+
+            // Add JS8 stations
+            js8Stations.forEach(s => {
+                if (s.lat && s.lon) {
+                    const color = getSignalColor(s.snr);
+                    const marker = L.circleMarker([s.lat, s.lon], {
+                        radius: 8,
+                        fillColor: '#22d3ee',
+                        color: color,
+                        weight: 3,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    marker.bindPopup(`
+                        <b>${s.callsign}</b><br>
+                        <span style="color:#22d3ee">JS8Call</span><br>
+                        Grid: ${s.grid}<br>
+                        SNR: ${s.snr} dB<br>
+                        Freq: ${s.frequency_khz?.toFixed(1)} kHz
+                    `);
+
+                    markers['js8-' + s.callsign] = marker;
+                    count++;
+                }
+            });
+
+            document.getElementById('map-station-count').textContent = count;
+
+            // Fit bounds if we have markers
+            if (count > 0) {
+                const group = L.featureGroup(Object.values(markers));
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+
+        function getSignalColor(snr) {
+            if (snr === null || snr === undefined || snr < -99) return '#666';
+            if (snr > -20) return '#4ade80';
+            if (snr > -30) return '#fbbf24';
+            return '#f87171';
+        }
+
+        // Update station table
+        function updateStationTable() {
+            const tbody = document.getElementById('station-table-body');
+            const allStations = [];
+
+            beaconPeers.forEach(p => allStations.push({
+                call: p.callsign || p.identity_short,
+                grid: p.grid,
+                snr: p.rx_level_db,
+                source: 'beacon',
+                time: p.last_seen
+            }));
+
+            js8Stations.forEach(s => allStations.push({
+                call: s.callsign,
+                grid: s.grid,
+                snr: s.snr,
+                source: 'js8',
+                time: s.last_seen
+            }));
+
+            // Sort by most recent
+            allStations.sort((a, b) => b.time - a.time);
+
+            tbody.innerHTML = allStations.slice(0, 20).map(s => `
+                <tr>
+                    <td>${s.call}</td>
+                    <td>${s.grid || '--'}</td>
+                    <td>${s.snr?.toFixed?.(0) || s.snr || '--'}</td>
+                    <td><span class="source-badge ${s.source}">${s.source === 'beacon' ? 'BCN' : 'JS8'}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // Update activity feed
+        function updateFeed() {
+            const content = document.getElementById('feed-content');
+            let items = allActivity;
+
+            if (currentFeed === 'beacon') {
+                items = items.filter(a => a.type === 'beacon');
+            } else if (currentFeed === 'js8') {
+                items = items.filter(a => a.type === 'js8');
+            } else if (currentFeed === 'messages') {
+                items = items.filter(a => a.type === 'message');
+            }
+
+            items = items.slice(0, 50);
+
+            if (items.length === 0) {
+                content.innerHTML = '<div class="feed-item"><div class="feed-item-header"><span class="feed-callsign">No activity yet</span></div></div>';
+                return;
+            }
+
+            content.innerHTML = items.map(a => `
+                <div class="feed-item">
+                    <div class="feed-item-header">
+                        <span class="feed-callsign ${a.type}">${a.callsign}</span>
+                        <span class="feed-time">${formatTime(a.time)}</span>
+                    </div>
+                    <div class="feed-detail">${a.detail}</div>
+                </div>
+            `).join('');
+        }
+
+        function showFeed(feed) {
+            currentFeed = feed;
+            document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            updateFeed();
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '--';
+            const d = new Date(timestamp * 1000);
+            return d.toLocaleTimeString();
+        }
+
+        // Controls
+        async function forceBeacon() {
+            // TODO: Implement force beacon TX
+            alert('Force beacon not yet implemented');
+        }
+
+        async function toggleTx() {
+            try {
+                const res = await fetch('/api/beacon/config');
+                const config = await res.json();
+                const newTx = !config.tx_beacon;
+
+                await fetch('/api/beacon/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({tx_beacon: newTx})
+                });
+
+                fetchSchedulerStatus();
+            } catch (e) {
+                console.error('Toggle TX error:', e);
+            }
+        }
+
+        async function controlScheduler(action) {
+            try {
+                await fetch('/api/beacon/control', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action})
+                });
+                fetchSchedulerStatus();
+            } catch (e) {
+                console.error('Scheduler control error:', e);
+            }
+        }
+
+        // JS8Call controls
+        async function toggleJS8() {
+            const enabled = document.getElementById('js8-enabled').checked;
+            const host = document.getElementById('js8-host').value;
+            const port = parseInt(document.getElementById('js8-port').value);
+
+            try {
+                if (enabled) {
+                    await fetch('/api/js8call/connect', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({host, port})
+                    });
+                } else {
+                    await fetch('/api/js8call/disconnect', {method: 'POST'});
+                }
+                setTimeout(fetchJS8Status, 1000);
+            } catch (e) {
+                console.error('JS8 toggle error:', e);
+            }
+        }
+
+        async function js8SendHB() {
+            try {
+                await fetch('/api/js8call/send', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({type: 'heartbeat'})
+                });
+            } catch (e) {
+                console.error('JS8 HB error:', e);
+            }
+        }
+
+        async function js8SendCQ() {
+            try {
+                await fetch('/api/js8call/send', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({type: 'cq'})
+                });
+            } catch (e) {
+                console.error('JS8 CQ error:', e);
+            }
+        }
+
+        // TAK controls
+        async function updateTakConfig() {
+            const enabled = document.getElementById('tak-enabled').checked;
+            const host = document.getElementById('tak-host').value;
+            const port = parseInt(document.getElementById('tak-port').value);
+
+            try {
+                await fetch('/api/dashboard/tak/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled, host, port, protocol: 'udp'})
+                });
+            } catch (e) {
+                console.error('TAK config error:', e);
+            }
+        }
+
+        async function takPushAll() {
+            try {
+                const res = await fetch('/api/dashboard/tak/push', {method: 'POST'});
+                const data = await res.json();
+                alert(`Pushed ${data.pushed} stations to TAK`);
+            } catch (e) {
+                console.error('TAK push error:', e);
+            }
+        }
+
+        async function takTest() {
+            try {
+                const res = await fetch('/api/dashboard/tak/test', {method: 'POST'});
+                const data = await res.json();
+                alert(data.message || data.error);
+            } catch (e) {
+                console.error('TAK test error:', e);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -361,6 +361,12 @@
                     <option value="">-- Select --</option>
                 </select>
             </div>
+
+            <div class="note" style="margin-top: 12px; background: var(--bg); padding: 10px; border-radius: 6px;">
+                <strong>Pi 4 USB Ports:</strong> The Pi 4 has both USB 2.0 (black) and USB 3.0 (blue) ports.
+                For consistent device detection, always plug your radio interface into the <strong>same USB port</strong>.
+                If you move it to a different port, the device path may change.
+            </div>
         </div>
 
         <!-- Step 4: Test Connection -->
@@ -392,15 +398,98 @@
             </div>
         </div>
 
-        <!-- Step 5: Network Security (Optional) -->
+        <!-- Step 5: Station Identity -->
         <div class="card">
             <div class="card-header">
                 <div class="step-number">5</div>
+                <div class="card-title">Station Identity</div>
+            </div>
+
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 10px;">
+                Your callsign and grid square are included in beacon transmissions so other stations can identify you.
+            </p>
+
+            <label for="beacon-callsign">Callsign</label>
+            <input type="text" id="beacon-callsign" placeholder="e.g., W1ABC" style="text-transform: uppercase;">
+
+            <label for="beacon-grid">Grid Square</label>
+            <input type="text" id="beacon-grid" placeholder="e.g., FN42" maxlength="8" style="text-transform: uppercase;">
+
+            <div class="checkbox-row" style="margin-top: 12px;">
+                <input type="checkbox" id="tx-beacon">
+                <label for="tx-beacon">
+                    <strong>Enable beacon transmission</strong><br>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">
+                        Transmit beacons at :00 and :30 each hour for station discovery. Uncheck for listen-only mode.
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 6: Integrations (Optional) -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-number">6</div>
+                <div class="card-title">Integrations (Optional)</div>
+            </div>
+
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">
+                Connect to other applications running on your network. Configure now or later from the dashboard.
+            </p>
+
+            <!-- JS8Call -->
+            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                <div class="checkbox-row" style="margin-bottom: 8px;">
+                    <input type="checkbox" id="js8-enable">
+                    <label for="js8-enable"><strong>JS8Call Integration</strong></label>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
+                    Connect to JS8Call's API to see JS8 stations on the dashboard map.
+                    JS8Call must have TCP API enabled (File → Settings → Reporting → Enable TCP Server API).
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 2;">
+                        <label for="js8-host">Host</label>
+                        <input type="text" id="js8-host" value="127.0.0.1" placeholder="127.0.0.1">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="js8-port">Port</label>
+                        <input type="text" id="js8-port" value="2442" placeholder="2442">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAK -->
+            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 12px;">
+                <div class="checkbox-row" style="margin-bottom: 8px;">
+                    <input type="checkbox" id="tak-enable">
+                    <label for="tak-enable"><strong>TAK Integration</strong></label>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
+                    Push discovered stations to TAK/ATAK as Cursor-on-Target events.
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 2;">
+                        <label for="tak-host">TAK Server Host</label>
+                        <input type="text" id="tak-host" placeholder="192.168.1.100">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="tak-port">Port</label>
+                        <input type="text" id="tak-port" value="8087" placeholder="8087">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 7: Network Security (Optional) -->
+        <div class="card">
+            <div class="card-header">
+                <div class="step-number">7</div>
                 <div class="card-title">Network Security (Optional)</div>
             </div>
 
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 10px;">
-                IFAC (Interface Access Code) encrypts the WiFi-to-radio link. Only devices with matching credentials can use your gateway. Leave empty for open access.
+                IFAC (Interface Access Code) encrypts the Reticulum interface. Only devices with matching credentials can communicate. Leave empty for open access.
             </p>
 
             <label for="ifac-name">Network Name</label>
@@ -408,16 +497,12 @@
 
             <label for="ifac-pass">Passphrase</label>
             <input type="password" id="ifac-pass" placeholder="Leave empty for no encryption">
-
-            <div class="note">
-                Sideband must use the same Network Name and Passphrase.
-            </div>
         </div>
 
-        <!-- Step 6: Complete -->
+        <!-- Step 8: Complete -->
         <div class="card">
             <div class="card-header">
-                <div class="step-number">6</div>
+                <div class="step-number">8</div>
                 <div class="card-title">Start Gateway</div>
             </div>
 
@@ -625,6 +710,9 @@
             btn.disabled = true;
 
             const voxMode = document.getElementById('vox-mode').checked;
+            const callsign = document.getElementById('beacon-callsign').value.toUpperCase().trim();
+            const grid = document.getElementById('beacon-grid').value.toUpperCase().trim();
+
             const config = {
                 radio_id: document.getElementById('radio-select').value,
                 serial_port: voxMode ? '' : (document.getElementById('serial-port').value ||
@@ -635,7 +723,17 @@
                 ifac_name: document.getElementById('ifac-name').value || '',
                 ifac_pass: document.getElementById('ifac-pass').value || '',
                 vox_mode: voxMode,
-                peers: {}
+                // Beacon settings
+                beacon_message: callsign && grid ? `${callsign} ${grid}` : (callsign || ''),
+                tx_beacon: document.getElementById('tx-beacon').checked,
+                // JS8Call settings
+                js8_enabled: document.getElementById('js8-enable').checked,
+                js8_host: document.getElementById('js8-host').value || '127.0.0.1',
+                js8_port: parseInt(document.getElementById('js8-port').value) || 2442,
+                // TAK settings
+                tak_enabled: document.getElementById('tak-enable').checked,
+                tak_host: document.getElementById('tak-host').value || '',
+                tak_port: parseInt(document.getElementById('tak-port').value) || 8087,
             };
 
             try {

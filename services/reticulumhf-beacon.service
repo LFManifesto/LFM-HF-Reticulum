@@ -1,0 +1,19 @@
+[Unit]
+Description=ReticulumHF Beacon Scheduler
+After=network.target freedvtnc2.service reticulumhf-rnsd.service
+Requires=freedvtnc2.service
+ConditionPathExists=/etc/reticulumhf/.setup_complete
+ConditionPathExists=/etc/reticulumhf/beacon.json
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+Group=audio
+ExecStart=/usr/bin/python3 /opt/reticulumhf/beacon/scheduler.py --config /etc/reticulumhf/beacon.json
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

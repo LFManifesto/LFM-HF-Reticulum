@@ -1,0 +1,19 @@
+{
+  "beacon_minutes": [0, 30],
+  "beacon_duration_sec": 60,
+  "beacon_tx_delay_sec": 5,
+  "beacon_mode": "DATAC4",
+  "arq_mode": "DATAC1",
+  "freedvtnc2_cmd_host": "127.0.0.1",
+  "freedvtnc2_cmd_port": 8002,
+  "freedvtnc2_kiss_port": 8001,
+  "command_timeout": 5.0,
+  "station_id": "",
+  "beacon_message": "",
+  "auto_switch": true,
+  "tx_beacon": false,
+  "adaptive_mode": false,
+  "snr_threshold_low": -2.0,
+  "snr_threshold_high": 3.0,
+  "dashboard_url": "http://127.0.0.1/api/dashboard/peers"
+}
