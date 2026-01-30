@@ -7,6 +7,7 @@ Runs as a captive portal on first boot for zero-config setup.
 import json
 import os
 import shutil
+import socket
 import subprocess
 import time
 from datetime import datetime
@@ -27,6 +28,34 @@ from hardware import (
 # Configuration constants
 FREEDVTNC2_STARTUP_TIMEOUT_SECS = 15  # Wait for freedvtnc2 to start listening
 FREEDVTNC2_POLL_INTERVAL_SECS = 0.5   # Check interval during startup
+FREEDVTNC2_CMD_PORT = 8002  # Command interface port (freedvtnc2-lfm)
+FREEDVTNC2_CMD_TIMEOUT = 5  # Timeout for command interface
+
+
+def freedvtnc2_command(command: str, timeout: float = FREEDVTNC2_CMD_TIMEOUT) -> Tuple[bool, str]:
+    """
+    Send a command to freedvtnc2's command interface (port 8002).
+
+    Returns (success, response) tuple.
+    """
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        sock.connect(('127.0.0.1', FREEDVTNC2_CMD_PORT))
+        sock.send(f"{command}\n".encode('utf-8'))
+        response = sock.recv(1024).decode('utf-8').strip()
+        sock.close()
+
+        if response.startswith("OK"):
+            return True, response
+        else:
+            return False, response
+    except socket.timeout:
+        return False, "ERROR Connection timeout"
+    except ConnectionRefusedError:
+        return False, "ERROR freedvtnc2 not running or command interface disabled"
+    except Exception as e:
+        return False, f"ERROR {str(e)}"
 
 app = Flask(__name__)
 
@@ -290,6 +319,8 @@ def generate_freedvtnc2_command(radio_id: str, serial_port: str, audio_card: int
         f"--rigctld-port {rigctld_port}",
         "--kiss-tcp-port 8001",
         "--kiss-tcp-address 0.0.0.0",
+        "--cmd-port 8002",  # Command interface (freedvtnc2-lfm)
+        "--cmd-address 0.0.0.0",
         f"--ptt-on-delay-ms {ptt_on_delay}",
         f"--ptt-off-delay-ms {ptt_off_delay}",
         f"--output-volume {tx_output_volume}"
@@ -585,7 +616,7 @@ def api_tx_audio_get():
 
 @app.route("/api/tx-audio", methods=["POST"])
 def api_tx_audio_set():
-    """Set TX audio output level and restart freedvtnc2."""
+    """Set TX audio output level via command interface (no restart needed)."""
     data = request.get_json()
     new_volume = data.get("tx_output_volume")
 
@@ -600,63 +631,101 @@ def api_tx_audio_set():
     # Clamp to safe range
     new_volume = max(-20, min(0, new_volume))
 
+    # Send command to freedvtnc2 (instant, no restart)
+    success, response = freedvtnc2_command(f"VOLUME {new_volume}")
+    if not success:
+        return jsonify({"success": False, "error": response}), 400
+
+    # Update config file for persistence across restarts
     env_file = Path("/etc/reticulumhf/config.env")
-    if not env_file.exists():
-        return jsonify({"success": False, "error": "Configuration not found. Run setup first."}), 400
+    if env_file.exists():
+        try:
+            config_lines = []
+            radio_id = None
+            serial_port = None
+            audio_card = None
+            freedv_mode = "DATAC1"
 
-    try:
-        # Read current config
-        config_lines = []
-        radio_id = None
-        serial_port = None
-        audio_card = None
-        freedv_mode = "DATAC1"
+            with open(env_file) as f:
+                for line in f:
+                    stripped = line.strip()
+                    if stripped.startswith("RADIO_ID="):
+                        radio_id = stripped.split("=", 1)[1]
+                    elif stripped.startswith("SERIAL_PORT="):
+                        serial_port = stripped.split("=", 1)[1]
+                    elif stripped.startswith("AUDIO_CARD="):
+                        try:
+                            audio_card = int(stripped.split("=", 1)[1])
+                        except ValueError:
+                            pass
+                    elif stripped.startswith("FREEDV_MODE="):
+                        freedv_mode = stripped.split("=", 1)[1]
 
-        with open(env_file) as f:
-            for line in f:
-                stripped = line.strip()
-                if stripped.startswith("RADIO_ID="):
-                    radio_id = stripped.split("=", 1)[1]
-                elif stripped.startswith("SERIAL_PORT="):
-                    serial_port = stripped.split("=", 1)[1]
-                elif stripped.startswith("AUDIO_CARD="):
-                    try:
-                        audio_card = int(stripped.split("=", 1)[1])
-                    except ValueError:
-                        pass
-                elif stripped.startswith("FREEDV_MODE="):
-                    freedv_mode = stripped.split("=", 1)[1]
-
-                # Update TX_OUTPUT_VOLUME line
-                if stripped.startswith("TX_OUTPUT_VOLUME="):
-                    config_lines.append(f"TX_OUTPUT_VOLUME={new_volume}\n")
-                # Update FREEDVTNC2_CMD line
-                elif stripped.startswith("FREEDVTNC2_CMD="):
-                    if radio_id and audio_card is not None:
-                        new_cmd = generate_freedvtnc2_command(
-                            radio_id, serial_port or "", audio_card, freedv_mode, new_volume
-                        )
-                        config_lines.append(f'FREEDVTNC2_CMD="{new_cmd}"\n')
+                    # Update TX_OUTPUT_VOLUME line
+                    if stripped.startswith("TX_OUTPUT_VOLUME="):
+                        config_lines.append(f"TX_OUTPUT_VOLUME={new_volume}\n")
+                    # Update FREEDVTNC2_CMD line
+                    elif stripped.startswith("FREEDVTNC2_CMD="):
+                        if radio_id and audio_card is not None:
+                            new_cmd = generate_freedvtnc2_command(
+                                radio_id, serial_port or "", audio_card, freedv_mode, new_volume
+                            )
+                            config_lines.append(f'FREEDVTNC2_CMD="{new_cmd}"\n')
+                        else:
+                            config_lines.append(line)
                     else:
-                        config_lines.append(line)
-                else:
-                    config_lines.append(line if line.endswith('\n') else line + '\n')
+                        config_lines.append(line if line.endswith('\n') else line + '\n')
 
-        # Write updated config
-        with open(env_file, "w") as f:
-            f.writelines(config_lines)
+            with open(env_file, "w") as f:
+                f.writelines(config_lines)
+        except Exception:
+            # Config update failed but volume change succeeded - log but don't fail
+            pass
 
-        # Restart freedvtnc2 service
-        subprocess.run(["systemctl", "restart", "freedvtnc2"], capture_output=True, timeout=10)
+    return jsonify({
+        "success": True,
+        "tx_output_volume": new_volume,
+        "message": f"TX audio set to {new_volume} dB"
+    })
 
-        return jsonify({
-            "success": True,
-            "tx_output_volume": new_volume,
-            "message": f"TX audio set to {new_volume} dB. Modem restarting..."
-        })
 
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+@app.route("/api/modem-status")
+def api_modem_status():
+    """Query modem status via command interface."""
+    success, response = freedvtnc2_command("STATUS")
+    if not success:
+        return jsonify({"success": False, "error": response, "online": False})
+
+    # Parse response: OK STATUS MODE=DATAC1 VOLUME=0 FOLLOW=OFF PTT=OFF CHANNEL=CLEAR
+    status = {"success": True, "online": True}
+    if response.startswith("OK STATUS "):
+        parts = response[10:].split()
+        for part in parts:
+            if "=" in part:
+                key, value = part.split("=", 1)
+                status[key.lower()] = value
+    return jsonify(status)
+
+
+@app.route("/api/modem-levels")
+def api_modem_levels():
+    """Query modem audio levels via command interface."""
+    success, response = freedvtnc2_command("LEVELS")
+    if not success:
+        return jsonify({"success": False, "error": response})
+
+    # Parse response: OK LEVELS RX=-12.5
+    levels = {"success": True}
+    if response.startswith("OK LEVELS "):
+        parts = response[10:].split()
+        for part in parts:
+            if "=" in part:
+                key, value = part.split("=", 1)
+                try:
+                    levels[key.lower()] = float(value)
+                except ValueError:
+                    levels[key.lower()] = value
+    return jsonify(levels)
 
 
 def validate_wifi_settings(ssid: str, password: str) -> Tuple[bool, str]:
@@ -1228,7 +1297,7 @@ def api_config_info():
 
 @app.route("/api/set-freedv-mode", methods=["POST"])
 def api_set_freedv_mode():
-    """API endpoint to change FreeDV mode."""
+    """API endpoint to change FreeDV mode via command interface (no restart needed)."""
     data = request.get_json()
     new_mode = data.get("mode", "DATAC1")
 
@@ -1236,62 +1305,61 @@ def api_set_freedv_mode():
     if new_mode not in valid_modes:
         return jsonify({"success": False, "error": f"Invalid mode. Must be one of: {', '.join(valid_modes)}"})
 
+    # Send command to freedvtnc2 (instant, no restart)
+    success, response = freedvtnc2_command(f"MODE {new_mode}")
+    if not success:
+        return jsonify({"success": False, "error": response})
+
+    # Update config file for persistence across restarts
     env_file = Path("/etc/reticulumhf/config.env")
-    if not env_file.exists():
-        return jsonify({"success": False, "error": "Configuration not found. Run setup first."})
+    if env_file.exists():
+        try:
+            config_lines = []
+            radio_id = None
+            serial_port = None
+            audio_card = None
+            tx_output_volume = 0  # default per v0.2.1
 
-    try:
-        # Read current config
-        config_lines = []
-        radio_id = None
-        serial_port = None
-        audio_card = None
-        tx_output_volume = -6  # default
+            with open(env_file) as f:
+                for line in f:
+                    stripped = line.strip()
+                    if stripped.startswith("RADIO_ID="):
+                        radio_id = stripped.split("=", 1)[1]
+                    elif stripped.startswith("SERIAL_PORT="):
+                        serial_port = stripped.split("=", 1)[1]
+                    elif stripped.startswith("AUDIO_CARD="):
+                        try:
+                            audio_card = int(stripped.split("=", 1)[1])
+                        except ValueError:
+                            pass
+                    elif stripped.startswith("TX_OUTPUT_VOLUME="):
+                        try:
+                            tx_output_volume = int(stripped.split("=", 1)[1])
+                        except ValueError:
+                            pass
 
-        with open(env_file) as f:
-            for line in f:
-                stripped = line.strip()
-                if stripped.startswith("RADIO_ID="):
-                    radio_id = stripped.split("=", 1)[1]
-                elif stripped.startswith("SERIAL_PORT="):
-                    serial_port = stripped.split("=", 1)[1]
-                elif stripped.startswith("AUDIO_CARD="):
-                    try:
-                        audio_card = int(stripped.split("=", 1)[1])
-                    except ValueError:
-                        pass
-                elif stripped.startswith("TX_OUTPUT_VOLUME="):
-                    try:
-                        tx_output_volume = int(stripped.split("=", 1)[1])
-                    except ValueError:
-                        pass
-
-                # Update FREEDV_MODE line
-                if stripped.startswith("FREEDV_MODE="):
-                    config_lines.append(f"FREEDV_MODE={new_mode}\n")
-                # Update FREEDVTNC2_CMD line
-                elif stripped.startswith("FREEDVTNC2_CMD="):
-                    if radio_id and audio_card is not None:
-                        new_cmd = generate_freedvtnc2_command(
-                            radio_id, serial_port or "", audio_card, new_mode, tx_output_volume
-                        )
-                        config_lines.append(f'FREEDVTNC2_CMD="{new_cmd}"\n')
+                    # Update FREEDV_MODE line
+                    if stripped.startswith("FREEDV_MODE="):
+                        config_lines.append(f"FREEDV_MODE={new_mode}\n")
+                    # Update FREEDVTNC2_CMD line
+                    elif stripped.startswith("FREEDVTNC2_CMD="):
+                        if radio_id and audio_card is not None:
+                            new_cmd = generate_freedvtnc2_command(
+                                radio_id, serial_port or "", audio_card, new_mode, tx_output_volume
+                            )
+                            config_lines.append(f'FREEDVTNC2_CMD="{new_cmd}"\n')
+                        else:
+                            config_lines.append(line)
                     else:
-                        config_lines.append(line)
-                else:
-                    config_lines.append(line if line.endswith('\n') else line + '\n')
+                        config_lines.append(line if line.endswith('\n') else line + '\n')
 
-        # Write updated config
-        with open(env_file, "w") as f:
-            f.writelines(config_lines)
+            with open(env_file, "w") as f:
+                f.writelines(config_lines)
+        except Exception as e:
+            # Config update failed but mode change succeeded - log but don't fail
+            pass
 
-        # Restart freedvtnc2 service
-        subprocess.run(["systemctl", "restart", "freedvtnc2"], capture_output=True, timeout=10)
-
-        return jsonify({"success": True, "mode": new_mode})
-
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    return jsonify({"success": True, "mode": new_mode})
 
 
 @app.route("/api/versions")

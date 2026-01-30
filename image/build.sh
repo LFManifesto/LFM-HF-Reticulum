@@ -261,7 +261,8 @@ chown -R pi:pi /home/pi
 
 sudo -u pi bash -c 'export PATH="$PATH:/home/pi/.local/bin"; pipx install rns'
 sudo -u pi bash -c 'export PATH="$PATH:/home/pi/.local/bin"; pipx install nomadnet'
-sudo -u pi bash -c 'export PATH="$PATH:/home/pi/.local/bin"; pipx install freedvtnc2'
+# Install freedvtnc2-lfm fork with command interface (port 8002)
+sudo -u pi bash -c 'export PATH="$PATH:/home/pi/.local/bin"; pipx install git+https://github.com/LFManifesto/freedvtnc2.git'
 sudo -u pi bash -c 'export PATH="$PATH:/home/pi/.local/bin"; pipx runpip freedvtnc2 install audioop-lts' || true
 
 # Set permissions
