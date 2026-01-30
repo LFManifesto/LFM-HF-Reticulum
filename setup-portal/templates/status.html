@@ -515,7 +515,7 @@
         <div class="card">
             <div class="card-title">FreeDV Mode</div>
             <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">
-                Start with DATAC3 (recommended). Use DATAC1 for strong signals, DATAC4 for weak/noisy paths.
+                DATAC1 is for data transfer (fast). If beacon TX is enabled, the system automatically switches to DATAC4 during beacon windows (:00/:30) for better weak-signal discovery.
             </p>
 
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -1122,18 +1122,39 @@
 
         function copyText(elementId) {
             const text = document.getElementById(elementId).textContent;
-            const btn = document.getElementById(elementId).nextElementSibling;
+            const btn = event.target;
 
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(text).then(() => {
-                    btn.textContent = 'Copied';
-                    btn.classList.add('copied');
-                    setTimeout(() => {
-                        btn.textContent = 'Copy';
-                        btn.classList.remove('copied');
-                    }, 2000);
-                });
+            // Try modern clipboard API first, fallback to execCommand
+            const copySuccess = () => {
+                btn.textContent = 'Copied';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(copySuccess).catch(() => fallbackCopy(text, copySuccess));
+            } else {
+                fallbackCopy(text, copySuccess);
             }
+        }
+
+        function fallbackCopy(text, onSuccess) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                onSuccess();
+            } catch (e) {
+                alert('Copy failed - please copy manually');
+            }
+            document.body.removeChild(textarea);
         }
 
         function refreshStatus() {
