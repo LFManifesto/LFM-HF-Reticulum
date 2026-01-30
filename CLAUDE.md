@@ -77,6 +77,17 @@ HF Radio --> RF --> Remote Station
 | `scripts/first-boot.sh` | First boot setup (WiFi AP, services) |
 | `services/*.service` | Systemd service files |
 
+## freedvtnc2-lfm Fork
+
+v0.3.0 uses a custom fork of freedvtnc2 with TCP command interface:
+
+- **Repo:** [LFManifesto/freedvtnc2](https://github.com/LFManifesto/freedvtnc2)
+- **Port 8001:** KISS TNC (data) - unchanged from upstream
+- **Port 8002:** Command interface (new)
+- **Commands:** PING, STATUS, MODE, VOLUME, LEVELS, PTT TEST
+
+The portal uses `freedvtnc2_command()` helper in app.py to send commands via port 8002.
+
 ## Configuration
 
 | Setting | Value |
@@ -141,7 +152,7 @@ All clients (Sideband, MeshChat, Columba) use the same settings:
 
 | Version | Changes |
 |---------|---------|
-| v0.3.0-alpha | freedvtnc2-lfm fork with TCP command interface (port 8002). Mode/volume changes instant without restart. New endpoints: /api/modem-status, /api/modem-levels |
+| v0.3.0-alpha | freedvtnc2-lfm fork with TCP command interface (port 8002). Instant mode/volume changes. Live RX level from modem. Simplified UI (removed ALSA sliders). Mobile-friendly design. |
 | v0.2.3-alpha | Auto-set ALSA defaults on setup (Speaker 80%, Mic Capture 75%, AGC off), CLI commands section in status UI |
 | v0.2.2-alpha | ALSA control fixes (Mic Capture vs Playback), radio-specific ALC guidance, improved UI |
 | v0.2.1-alpha | TX audio fix: 0 dB default (was -6), ALSA 80% (was 64%) |
