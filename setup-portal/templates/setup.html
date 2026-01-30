@@ -460,7 +460,7 @@
             </div>
 
             <!-- TAK -->
-            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 12px;">
+            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px;">
                 <div class="checkbox-row" style="margin-bottom: 8px;">
                     <input type="checkbox" id="tak-enable">
                     <label for="tak-enable"><strong>TAK Integration</strong></label>
@@ -477,6 +477,55 @@
                         <label for="tak-port">Port</label>
                         <input type="text" id="tak-port" value="8087" placeholder="8087">
                     </div>
+                </div>
+            </div>
+
+            <!-- I2P Transport -->
+            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                <div class="checkbox-row" style="margin-bottom: 8px;">
+                    <input type="checkbox" id="i2p-enable" checked>
+                    <label for="i2p-enable"><strong>I2P Transport</strong></label>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
+                    Connect to Reticulum network over I2P (internet). Enables multi-path routing: HF for local discovery, I2P for bulk traffic.
+                </p>
+                <div>
+                    <label for="i2p-peer">I2P Peer Address</label>
+                    <input type="text" id="i2p-peer" value="kfamlmwnlw3acqfxip4x6kt53i2tr4ksp5h4qxwvxhoq7mchpolq.b32.i2p" placeholder="xxxxx.b32.i2p">
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                        Default: Lightfighter Reticulum node. Change only if connecting to a different network.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Operating Mode -->
+            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 12px;">
+                <div style="font-weight: 600; margin-bottom: 8px;">Operating Mode</div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
+                    Controls how HF and Internet interfaces interact. Can be changed later from the status page.
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="operating-mode-setup" value="hybrid" checked style="margin-top: 3px;">
+                        <div>
+                            <strong>Hybrid</strong> (recommended)<br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">HF TX only during beacon windows (:00/:30). I2P handles bulk traffic.</span>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="operating-mode-setup" value="hf_only" style="margin-top: 3px;">
+                        <div>
+                            <strong>HF Only</strong><br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Full HF control. I2P disabled. For field ops without internet.</span>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="operating-mode-setup" value="internet_only" style="margin-top: 3px;">
+                        <div>
+                            <strong>Internet Only</strong><br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">HF TX disabled. Use when radio is off or for testing.</span>
+                        </div>
+                    </label>
                 </div>
             </div>
         </div>
@@ -734,6 +783,11 @@
                 tak_enabled: document.getElementById('tak-enable').checked,
                 tak_host: document.getElementById('tak-host').value || '',
                 tak_port: parseInt(document.getElementById('tak-port').value) || 8087,
+                // I2P settings
+                i2p_enabled: document.getElementById('i2p-enable').checked,
+                i2p_peer: document.getElementById('i2p-peer').value || 'kfamlmwnlw3acqfxip4x6kt53i2tr4ksp5h4qxwvxhoq7mchpolq.b32.i2p',
+                // Operating mode
+                operating_mode: document.querySelector('input[name="operating-mode-setup"]:checked').value,
             };
 
             try {

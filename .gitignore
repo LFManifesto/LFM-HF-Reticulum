@@ -25,3 +25,5 @@ ENV/
 # Local configuration
 .env
 .env.local
+CLAUDE.md
+SESSION_STATE.md

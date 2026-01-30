@@ -402,7 +402,7 @@
         <header>
             <h1>ReticulumHF Gateway</h1>
             <p class="subtitle" id="radio-config">Loading...</p>
-            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.3.0-alpha</p>
+            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.3.2-alpha</p>
             <nav style="margin-top: 12px; display: flex; gap: 8px; justify-content: center;">
                 <a href="/status" class="btn btn-sm" style="background: var(--accent);">Status</a>
                 <a href="/dashboard" class="btn btn-sm">Beacon Dashboard</a>
@@ -537,6 +537,40 @@
             <div id="freedv-mode-status" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;"></div>
         </div>
 
+        <!-- Operating Mode -->
+        <div class="card">
+            <div class="card-title">Operating Mode</div>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">
+                Controls how HF and Internet interfaces interact.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg); border-radius: 4px; cursor: pointer;">
+                    <input type="radio" name="operating-mode" value="hybrid" style="margin-top: 3px;">
+                    <div>
+                        <strong>Hybrid</strong> (recommended)<br>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">HF TX only during beacon windows. Internet handles bulk transport.</span>
+                    </div>
+                </label>
+                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg); border-radius: 4px; cursor: pointer;">
+                    <input type="radio" name="operating-mode" value="hf_only" style="margin-top: 3px;">
+                    <div>
+                        <strong>HF Only</strong><br>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Full HF control. Internet transports disabled. For field ops.</span>
+                    </div>
+                </label>
+                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg); border-radius: 4px; cursor: pointer;">
+                    <input type="radio" name="operating-mode" value="internet_only" style="margin-top: 3px;">
+                    <div>
+                        <strong>Internet Only</strong><br>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">HF TX disabled. Use when preserving radio or HF is down.</span>
+                    </div>
+                </label>
+            </div>
+
+            <div id="operating-mode-status" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;"></div>
+        </div>
+
         <!-- Services -->
         <div class="card">
             <div class="card-title">Services</div>
@@ -592,6 +626,38 @@
                     <button class="btn btn-icon" onclick="showLogs('hostapd')" title="Logs">L</button>
                 </div>
             </div>
+
+            <div class="service-row">
+                <div class="service-info">
+                    <div class="service-name">i2pd (I2P Transport)</div>
+                    <div class="service-status" id="i2pd-status">
+                        <span class="indicator indicator-pending"></span> Checking...
+                    </div>
+                </div>
+                <div class="service-actions">
+                    <button class="btn btn-icon" onclick="controlService('i2pd', 'restart')" title="Restart">R</button>
+                    <button class="btn btn-icon" onclick="showLogs('i2pd')" title="Logs">L</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TX Gate Status -->
+        <div class="card">
+            <div class="card-title">TX Gate Status</div>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--bg); border-radius: 6px;">
+                <div style="flex: 1;">
+                    <div style="font-size: 1.1rem; font-weight: 600;" id="txgate-status">Checking...</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);" id="txgate-detail">Querying modem...</div>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn btn-small" onclick="manualTxWindow(60)" title="Open 60s TX window">TX 60s</button>
+                    <button class="btn btn-small" onclick="manualTxDisable()" title="Close TX gate">Close</button>
+                </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
+                In Hybrid mode, TX gate opens automatically during beacon windows (:00/:30).
+                Use manual controls for testing or override.
+            </p>
         </div>
 
         <!-- Reticulum Status -->
@@ -1120,6 +1186,126 @@
             }
         }
 
+        // Operating Mode
+        async function fetchOperatingMode() {
+            try {
+                const response = await apiFetch('/api/dashboard/mode');
+                const data = await response.json();
+                const radios = document.querySelectorAll('input[name="operating-mode"]');
+                radios.forEach(r => {
+                    r.checked = r.value === data.mode;
+                });
+            } catch (err) {
+                console.error('Failed to fetch operating mode:', err);
+            }
+        }
+
+        async function setOperatingMode(mode) {
+            const statusEl = document.getElementById('operating-mode-status');
+            statusEl.textContent = 'Applying...';
+            statusEl.style.color = 'var(--warning)';
+
+            try {
+                const response = await fetch('/api/dashboard/mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mode: mode})
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    statusEl.textContent = `Mode: ${mode}`;
+                    statusEl.style.color = 'var(--success)';
+                } else {
+                    statusEl.textContent = 'Error: ' + (data.error || 'Failed');
+                    statusEl.style.color = 'var(--error)';
+                }
+            } catch (err) {
+                statusEl.textContent = 'Error: ' + err.message;
+                statusEl.style.color = 'var(--error)';
+            }
+        }
+
+        // TX Gate functions
+        async function fetchTxGateStatus() {
+            try {
+                const response = await apiFetch('/api/dashboard/txgate');
+                const data = await response.json();
+                const statusEl = document.getElementById('txgate-status');
+                const detailEl = document.getElementById('txgate-detail');
+
+                if (data.success) {
+                    if (data.status === 'ENABLED') {
+                        statusEl.textContent = 'TX ENABLED';
+                        statusEl.style.color = 'var(--success)';
+                        detailEl.textContent = 'HF Only mode - full TX control';
+                    } else if (data.status === 'WINDOW') {
+                        statusEl.textContent = `TX WINDOW: ${data.remaining_seconds}s`;
+                        statusEl.style.color = 'var(--warning)';
+                        detailEl.textContent = 'Beacon window open';
+                    } else {
+                        statusEl.textContent = 'TX DISABLED';
+                        statusEl.style.color = 'var(--text-muted)';
+                        detailEl.textContent = data.mode === 'hybrid' ? 'Waiting for beacon window' : 'Internet Only mode';
+                    }
+                } else {
+                    statusEl.textContent = 'UNKNOWN';
+                    statusEl.style.color = 'var(--error)';
+                    detailEl.textContent = data.error || 'Cannot reach modem';
+                }
+            } catch (err) {
+                console.error('TX gate status error:', err);
+            }
+        }
+
+        async function manualTxWindow(seconds) {
+            try {
+                await fetch('/api/dashboard/txgate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'window', seconds: seconds})
+                });
+                fetchTxGateStatus();
+            } catch (err) {
+                console.error('TX window error:', err);
+            }
+        }
+
+        async function manualTxDisable() {
+            try {
+                await fetch('/api/dashboard/txgate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'disable'})
+                });
+                fetchTxGateStatus();
+            } catch (err) {
+                console.error('TX disable error:', err);
+            }
+        }
+
+        // I2P status
+        async function fetchI2pStatus() {
+            try {
+                const response = await apiFetch('/api/dashboard/i2p');
+                const data = await response.json();
+                const el = document.getElementById('i2pd-status');
+
+                if (data.running) {
+                    el.innerHTML = `<span class="indicator indicator-active"></span> Running (${data.tunnels || 'starting'})`;
+                } else {
+                    el.innerHTML = '<span class="indicator indicator-inactive"></span> Stopped';
+                }
+            } catch (err) {
+                console.error('I2P status error:', err);
+            }
+        }
+
+        // Attach mode change listeners
+        document.querySelectorAll('input[name="operating-mode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => setOperatingMode(e.target.value));
+        });
+
         function copyText(elementId) {
             const text = document.getElementById(elementId).textContent;
             const btn = event.target;
@@ -1163,10 +1349,16 @@
             fetchConfigInfo();
             fetchSystemHealth();
             fetchConnectedClients();
+            fetchOperatingMode();
+            fetchTxGateStatus();
+            fetchI2pStatus();
         }
 
         // Initial load
         refreshStatus();
+
+        // Poll TX gate status more frequently (every 5s)
+        setInterval(fetchTxGateStatus, 5000);
         startRxLevelPolling();
 
         // Auto-refresh

@@ -63,6 +63,9 @@ class BeaconPeer:
 class DashboardState:
     """Global dashboard state."""
 
+    # Valid operating modes
+    VALID_MODES = ("hybrid", "hf_only", "internet_only")
+
     def __init__(self):
         self.rx_history: deque = deque(maxlen=720)  # 1 hour at 5s intervals
         self.peers: Dict[str, BeaconPeer] = {}
@@ -70,6 +73,9 @@ class DashboardState:
         self.last_rnstatus: Dict = {}
         self.last_rnstatus_time: float = 0
         self.network_health: Dict = {}
+
+        # Operating mode: hybrid (default), hf_only, internet_only
+        self.operating_mode = "hybrid"
 
         # TAK settings
         self.tak_enabled = False
@@ -877,6 +883,206 @@ def api_grid_convert():
         return jsonify({"grid": grid, "lat": lat, "lon": lon})
     else:
         return jsonify({"error": "Provide 'grid' or 'lat' and 'lon'"}), 400
+
+
+# ============================================================================
+# Operating Mode API
+# ============================================================================
+
+@dashboard_bp.route('/mode', methods=['GET'])
+def get_operating_mode():
+    """Get current operating mode."""
+    return jsonify({
+        "mode": state.operating_mode,
+        "valid_modes": list(DashboardState.VALID_MODES),
+        "descriptions": {
+            "hybrid": "HF gated to beacon windows, I2P/TCP full transport",
+            "hf_only": "HF full control, I2P/TCP disabled",
+            "internet_only": "HF disabled, I2P/TCP full transport"
+        }
+    })
+
+
+@dashboard_bp.route('/mode', methods=['POST'])
+def set_operating_mode():
+    """
+    Set operating mode.
+
+    Modes:
+    - hybrid: HF TX only during beacon windows, I2P/TCP enabled
+    - hf_only: HF full control, I2P/TCP disabled
+    - internet_only: HF disabled, I2P/TCP enabled
+    """
+    data = request.get_json() or {}
+    new_mode = data.get('mode', '').lower()
+
+    if new_mode not in DashboardState.VALID_MODES:
+        return jsonify({
+            "success": False,
+            "error": f"Invalid mode. Must be one of: {', '.join(DashboardState.VALID_MODES)}"
+        }), 400
+
+    old_mode = state.operating_mode
+    state.operating_mode = new_mode
+
+    # Save to config file
+    config_path = Path("/etc/reticulumhf/beacon.json")
+    if not config_path.exists():
+        config_path = Path("/opt/reticulumhf/configs/beacon.json")
+
+    try:
+        if config_path.exists():
+            with open(config_path) as f:
+                config = json.load(f)
+            config['operating_mode'] = new_mode
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+    except Exception as e:
+        log.warning(f"Could not save mode to config: {e}")
+
+    # Apply mode changes
+    _apply_operating_mode(new_mode, old_mode)
+
+    log.info(f"Operating mode changed: {old_mode} -> {new_mode}")
+    return jsonify({"success": True, "mode": new_mode, "previous": old_mode})
+
+
+def _apply_operating_mode(new_mode: str, old_mode: str):
+    """
+    Apply operating mode changes to interfaces.
+
+    This controls which interfaces are active:
+    - hybrid: HF (gated), I2P/TCP (enabled)
+    - hf_only: HF (full), I2P/TCP (disabled)
+    - internet_only: HF (disabled), I2P/TCP (enabled)
+    """
+    if new_mode == "hf_only":
+        # Disable I2P, enable full HF TX
+        log.info("Mode: HF Only - disabling internet transports, enabling full HF TX")
+        subprocess.run(["systemctl", "stop", "i2pd"], capture_output=True)
+        _send_modem_command("TX ENABLE")
+
+    elif new_mode == "internet_only":
+        # Enable I2P, disable HF TX
+        log.info("Mode: Internet Only - disabling HF TX, enabling internet")
+        subprocess.run(["systemctl", "start", "i2pd"], capture_output=True)
+        _send_modem_command("TX DISABLE")
+
+    else:  # hybrid
+        # Enable I2P, gate HF TX (beacon scheduler controls windows)
+        log.info("Mode: Hybrid - HF gated, internet enabled")
+        subprocess.run(["systemctl", "start", "i2pd"], capture_output=True)
+        _send_modem_command("TX DISABLE")  # Beacon scheduler will open windows
+
+
+def _send_modem_command(command: str) -> Optional[str]:
+    """Send command to freedvtnc2 command interface."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(5.0)
+            sock.connect(("127.0.0.1", 8002))
+            sock.sendall(f"{command}\n".encode())
+            response = sock.recv(1024).decode().strip()
+            return response
+    except Exception as e:
+        log.warning(f"Failed to send modem command '{command}': {e}")
+        return None
+
+
+# ============================================================================
+# TX Gate and I2P Status API
+# ============================================================================
+
+@dashboard_bp.route('/txgate', methods=['GET'])
+def get_txgate_status():
+    """Get TX gate status from modem."""
+    response = _send_modem_command("TX STATUS")
+    if response:
+        # Parse response: ENABLED, DISABLED, or WINDOW:XX
+        parts = response.split(":")
+        status = parts[0].upper()
+        remaining = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
+        return jsonify({
+            "success": True,
+            "status": status,
+            "remaining_seconds": remaining,
+            "mode": state.operating_mode
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "status": "UNKNOWN",
+            "error": "Cannot reach modem"
+        })
+
+
+@dashboard_bp.route('/txgate', methods=['POST'])
+def set_txgate():
+    """Manually control TX gate (for testing/override)."""
+    data = request.get_json() or {}
+    action = data.get('action', '').upper()
+
+    if action == "ENABLE":
+        response = _send_modem_command("TX ENABLE")
+    elif action == "DISABLE":
+        response = _send_modem_command("TX DISABLE")
+    elif action == "WINDOW":
+        seconds = data.get('seconds', 60)
+        response = _send_modem_command(f"TX WINDOW {seconds}")
+    else:
+        return jsonify({"success": False, "error": "Invalid action"}), 400
+
+    return jsonify({"success": response is not None, "response": response})
+
+
+@dashboard_bp.route('/i2p', methods=['GET'])
+def get_i2p_status():
+    """Get I2P daemon status."""
+    try:
+        result = subprocess.run(
+            ["systemctl", "is-active", "i2pd"],
+            capture_output=True, text=True, timeout=5
+        )
+        running = result.stdout.strip() == "active"
+
+        # Try to get tunnel count from i2pd console
+        tunnel_count = None
+        if running:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.settimeout(2.0)
+                    sock.connect(("127.0.0.1", 7070))
+                    # Basic check - if we can connect, i2pd web console is up
+                    tunnel_count = "connected"
+            except Exception:
+                tunnel_count = "starting"
+
+        return jsonify({
+            "success": True,
+            "running": running,
+            "tunnels": tunnel_count,
+            "peer": "kfamlmwnlw3acqfxip4x6kt53i2tr4ksp5h4qxwvxhoq7mchpolq.b32.i2p"
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@dashboard_bp.route('/i2p', methods=['POST'])
+def control_i2p():
+    """Start/stop I2P daemon."""
+    data = request.get_json() or {}
+    action = data.get('action', '').lower()
+
+    if action == "start":
+        result = subprocess.run(["systemctl", "start", "i2pd"], capture_output=True)
+    elif action == "stop":
+        result = subprocess.run(["systemctl", "stop", "i2pd"], capture_output=True)
+    elif action == "restart":
+        result = subprocess.run(["systemctl", "restart", "i2pd"], capture_output=True)
+    else:
+        return jsonify({"success": False, "error": "Invalid action"}), 400
+
+    return jsonify({"success": result.returncode == 0})
 
 
 # ============================================================================

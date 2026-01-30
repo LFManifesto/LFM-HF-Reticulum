@@ -108,6 +108,9 @@ class BeaconConfig:
     snr_threshold_low: float = -2.0     # Below this, use DATAC3
     snr_threshold_high: float = 3.0     # Above this, use DATAC1
 
+    # Operating mode (hybrid, hf_only, internet_only)
+    operating_mode: str = "hybrid"
+
     # Dashboard integration
     dashboard_url: str = ""             # URL to POST discovered peers (e.g., http://127.0.0.1/api/dashboard/peers)
 
@@ -247,6 +250,44 @@ class FreeDVTNC2Client:
         """Check if channel is clear (no RX activity)."""
         status = self.get_status()
         return status and status.get('channel', '').upper() == 'CLEAR'
+
+    # TX Gate Control Methods
+    def tx_enable(self) -> bool:
+        """Enable TX (allow all PTT)."""
+        success, _ = self.send_command("TX ENABLE")
+        return success
+
+    def tx_disable(self) -> bool:
+        """Disable TX (block all PTT)."""
+        success, _ = self.send_command("TX DISABLE")
+        return success
+
+    def tx_window(self, seconds: int) -> bool:
+        """Open TX window for specified seconds."""
+        success, _ = self.send_command(f"TX WINDOW {seconds}")
+        if success:
+            log.info(f"TX window opened for {seconds} seconds")
+        return success
+
+    def get_tx_status(self) -> Optional[Dict]:
+        """Get TX gate status."""
+        success, response = self.send_command("TX STATUS")
+        if not success:
+            return None
+
+        # Parse: "OK TX ENABLED" or "OK TX DISABLED" or "OK TX WINDOW:45"
+        status = {"enabled": False, "window": False, "remaining": 0}
+        if "ENABLED" in response:
+            status["enabled"] = True
+        elif "WINDOW" in response:
+            status["window"] = True
+            # Extract remaining seconds
+            if ":" in response:
+                try:
+                    status["remaining"] = int(response.split(":")[-1])
+                except ValueError:
+                    pass
+        return status
 
     def send_kiss_frame(self, data: bytes) -> bool:
         """Send a KISS frame via the data port."""
@@ -828,6 +869,17 @@ class BeaconScheduler:
         """Switch to beacon mode and optionally transmit."""
         log.info("Entering beacon window")
 
+        # Check operating mode - skip beacon in internet_only mode
+        if self.config.operating_mode == "internet_only":
+            log.info("Internet Only mode - skipping beacon window")
+            return
+
+        # In hybrid mode, open TX window for beacon duration
+        # In hf_only mode, TX is always enabled
+        if self.config.operating_mode == "hybrid":
+            log.info(f"Opening TX window for {self.config.beacon_duration_sec} seconds")
+            self.tnc.tx_window(self.config.beacon_duration_sec)
+
         # Switch to beacon mode
         if not self.tnc.set_mode(self.config.beacon_mode):
             log.error("Failed to switch to beacon mode")
@@ -857,6 +909,9 @@ class BeaconScheduler:
             return
 
         self.current_mode = Mode.ARQ
+
+        # In hybrid mode, TX window auto-closes after duration
+        # No need to explicitly disable here
 
         if self.on_mode_change:
             self.on_mode_change(Mode.ARQ, self.config.arq_mode)

@@ -1,4 +1,5 @@
 {
+  "operating_mode": "hybrid",
   "beacon_minutes": [0, 30],
   "beacon_duration_sec": 60,
   "beacon_tx_delay_sec": 5,

@@ -177,7 +177,8 @@ apt-get install -y \
     libhamlib-utils libhamlib-dev \
     hostapd dnsmasq \
     iptables \
-    fake-hwclock
+    fake-hwclock \
+    i2pd
 
 # Configure fake-hwclock to preserve time across reboots
 # This fixes the "wrong date on first boot" issue for Pi without RTC
@@ -215,17 +216,55 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
 address=/reticulumhf.local/192.168.4.1
 DNSMASQ
 
-# Configure static IP for wlan0
+# Configure network interfaces
 cat >> /etc/dhcpcd.conf << 'DHCPCD'
 
-# ReticulumHF WiFi AP static IP
+# ReticulumHF network configuration
+
+# eth0: DHCP client for internet backhaul
+interface eth0
+# Uses DHCP by default, no static config needed
+
+# wlan0: Static IP for WiFi AP
 interface wlan0
 static ip_address=192.168.4.1/24
 nohook wpa_supplicant
 DHCPCD
 
-# Enable IP forwarding (for internet sharing later if connected via ethernet)
+# Enable IP forwarding (allows WiFi clients to reach internet via ethernet)
 echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+
+# Configure NAT for WiFi clients to reach internet through ethernet
+cat > /etc/iptables.rules << 'IPTABLES'
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -o eth0 -j MASQUERADE
+COMMIT
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i wlan0 -o eth0 -j ACCEPT
+COMMIT
+IPTABLES
+
+# Load iptables rules on boot
+cat > /etc/network/if-up.d/iptables << 'IPTABLES_LOAD'
+#!/bin/sh
+iptables-restore < /etc/iptables.rules
+IPTABLES_LOAD
+chmod +x /etc/network/if-up.d/iptables
+
+# Configure i2pd for Reticulum I2P transport
+echo "[6.1/9] Configuring i2pd..."
+cp /opt/reticulumhf/configs/i2pd.conf /etc/i2pd/i2pd.conf
+# Enable i2pd but don't start until first-boot
+systemctl enable i2pd
+# i2pd will be started/stopped based on operating mode
 
 # Tell NetworkManager to not manage wlan0 (we use hostapd for AP mode)
 mkdir -p /etc/NetworkManager/conf.d
