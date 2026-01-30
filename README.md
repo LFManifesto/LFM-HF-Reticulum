@@ -1,10 +1,10 @@
 # ReticulumHF
 
-**v0.3.1-alpha** - Reticulum mesh networking over HF radio using FreeDV data modes.
+**v0.3.1-alpha** - Reticulum networking over HF radio using FreeDV data modes.
 
 ## What It Does
 
-Raspberry Pi gateway that bridges Reticulum networks over HF radio. Provides encrypted mesh communication without internet infrastructure.
+Raspberry Pi gateway that bridges Reticulum networks over HF radio. Provides encrypted communication without internet infrastructure.
 
 - Web setup wizard and operator dashboard
 - JS8Call integration (station discovery)
