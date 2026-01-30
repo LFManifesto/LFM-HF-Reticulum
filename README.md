@@ -1,6 +1,6 @@
 # ReticulumHF
 
-**v0.2.3-alpha** - Reticulum over HF radio using FreeDV.
+**v0.3.0-alpha** - Reticulum over HF radio using FreeDV.
 
 ## Overview
 
@@ -8,7 +8,8 @@ Runs Reticulum over HF radio using FreeDV data modes. Provides encrypted peer-to
 
 **Key Features:**
 - Web-based setup wizard - no command line required
-- Audio level monitoring and ALSA mixer controls
+- Live RX audio level from modem
+- Instant mode and volume changes (no service restart)
 - FreeDV mode selection based on band conditions
 - VOX mode support for audio-only interfaces
 - Works with Sideband, MeshChat, NomadNet
@@ -24,7 +25,7 @@ Download the SD card image, flash it, boot, configure via web portal.
 
 ### Download
 
-[reticulumhf-v0.2.3-alpha.img.xz](https://github.com/LFManifesto/ReticulumHF/releases)
+[reticulumhf-v0.3.0-alpha.img.xz](https://github.com/LFManifesto/ReticulumHF/releases)
 
 ### Quick Start
 
@@ -46,17 +47,15 @@ Download the SD card image, flash it, boot, configure via web portal.
 
 ### Status Page Features
 
-- **Audio Level Monitoring** - Real-time VU meter with guidance
-  - Tune to active frequency (7.078 JS8Call, 14.074 FT8) to verify audio
-  - Target: -10 to -5 dB on incoming signals
-  - Noise floor at -30 to -60 dB is normal
-- **ALSA Mixer Controls** - Adjust RX input/output levels from the web UI
-- **TX Audio Level** - Adjustable output volume (-20 to 0 dB) to prevent ALC activation
-  - Default: 0 dB (full scale - control levels via ALSA and radio menu)
-  - Reduce to -3 to -6 dB if radio power fluctuates during TX
-- **FreeDV Mode Selection** - Switch between DATAC1/DATAC3/DATAC4 based on conditions
+- **Live RX Level** - Real-time audio level from modem (updates every second)
+  - Target: -15 to -3 dB for good signal
+  - Below -35 dB indicates quiet/no signal
+- **TX Volume Control** - Adjustable output volume (-20 to 0 dB)
+  - Reduce if radio ALC meter is high or power fluctuates
+- **Instant Mode Changes** - Switch FreeDV modes without service restart
+- **FreeDV Mode Selection** - DATAC1 (fast), DATAC3 (balanced), DATAC4 (robust)
 - **Service Controls** - Restart/view logs for rnsd, rigctld, freedvtnc2
-- **Troubleshooting Tips** - Common issues and solutions
+- **Troubleshooting Guide** - Level adjustment tips and common fixes
 
 ### FreeDV Modes
 

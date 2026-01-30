@@ -18,7 +18,7 @@
             --accent-hover: #e03131;
             --success: #4ade80;
             --error: #c92a2a;
-            --warning: #f59e0b;
+            --warning: #fbbf24;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -402,7 +402,7 @@
         <header>
             <h1>ReticulumHF Gateway</h1>
             <p class="subtitle" id="radio-config">Loading...</p>
-            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.2.2-alpha</p>
+            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.3.0-alpha</p>
         </header>
 
         <!-- Gateway Status -->
@@ -448,84 +448,62 @@
             </div>
         </div>
 
-        <!-- Audio Monitor -->
+        <!-- Audio Levels -->
         <div class="card">
-            <div class="card-title">Audio Level</div>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">
-                Tune to an active frequency (7.078 JS8Call, 14.074 FT8) to verify audio path.
-                Target: -10 to -5 dB on incoming signals. Noise floor at -30 to -60 dB is normal.
-            </p>
+            <div class="card-title">Audio Levels</div>
+
+            <!-- RX Level (from modem) -->
             <div class="audio-monitor">
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">RX Level (from modem)</div>
                 <div class="level-display">
                     <div class="level-meter-container">
-                        <div class="level-meter-bar" id="audio-meter-bar"></div>
+                        <div class="level-meter-bar" id="rx-meter-bar"></div>
                     </div>
-                    <span class="level-value" id="audio-level-value">-- dB</span>
+                    <span class="level-value" id="rx-level-value">-- dB</span>
                 </div>
-                <div class="level-status" id="audio-level-status">Check level when signals are present</div>
-            </div>
-            <div class="btn-group" style="margin-top: 10px;">
-                <button class="btn btn-small" id="check-audio-btn" onclick="checkAudioLevel()">Check Level</button>
-                <button class="btn btn-small" id="monitor-audio-btn" onclick="toggleAudioMonitor()">Start Monitor</button>
+                <div class="level-status" id="rx-level-status">Waiting for modem...</div>
             </div>
 
-            <!-- ALSA Mixer Controls -->
-            <div id="alsa-sliders" class="audio-monitor" style="margin-top: 12px; display: none;">
-                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">ALSA Mixer Controls</div>
-                <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px;">
-                    Speaker = TX to radio | Mic Capture = RX from radio
-                </p>
-                <div id="speaker-slider" class="slider-control" style="display: none;">
-                    <div class="slider-label">Speaker (TX Output → Radio)</div>
-                    <div class="slider-row">
-                        <input type="range" min="0" max="100" value="80" id="speaker-range">
-                        <span class="slider-value" id="speaker-value">80%</span>
-                    </div>
-                </div>
-                <div id="mic-slider" class="slider-control" style="display: none; margin-top: 8px;">
-                    <div class="slider-label">Mic Capture (RX Input ← Radio)</div>
-                    <div class="slider-row">
-                        <input type="range" min="0" max="100" value="75" id="mic-range">
-                        <span class="slider-value" id="mic-value">75%</span>
-                    </div>
-                </div>
-                <div id="agc-status" style="font-size: 0.75rem; margin-top: 8px; display: none;">
-                    <span style="color: var(--text-muted);">AGC:</span>
-                    <span id="agc-value" style="color: var(--success);">OFF (correct for digital)</span>
-                </div>
-                <div id="monitoring-status" style="font-size: 0.75rem; margin-top: 4px; display: none;">
-                    <span style="color: var(--text-muted);">Mic Playback (sidetone):</span>
-                    <span id="monitoring-value" style="color: var(--success);">Muted</span>
-                </div>
-                <div id="no-alsa-msg" style="font-size: 0.8rem; color: var(--warning); display: none;">
-                    No ALSA mixer controls found. This radio has built-in USB audio - adjust levels in radio menu only.
-                </div>
-            </div>
-
-            <!-- TX Audio Level -->
-            <div class="audio-monitor" style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;">
-                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">TX Audio Level (freedvtnc2)</div>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
-                    Controls modem output level. Adjust based on radio ALC meter.
-                </p>
+            <!-- TX Volume -->
+            <div class="audio-monitor" style="margin-top: 12px;">
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">TX Volume</div>
                 <div class="slider-control">
-                    <div class="slider-label">Output Volume</div>
                     <div class="slider-row">
                         <input type="range" min="-20" max="0" value="0" id="tx-audio-range" onchange="setTxAudio(this.value)">
                         <span class="slider-value" id="tx-audio-value">0 dB</span>
                     </div>
                 </div>
                 <div id="tx-audio-status" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;"></div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
+                    If radio ALC meter is high or power fluctuates, reduce this value.
+                </p>
             </div>
 
-            <!-- Radio-Specific ALC Guidance -->
+            <!-- Troubleshooting guidance -->
             <div class="audio-monitor" style="margin-top: 12px; background: rgba(201, 42, 42, 0.05); border: 1px solid var(--border);">
-                <div style="font-size: 0.85rem; color: var(--accent); margin-bottom: 8px; font-weight: 600;">ALC Target for Your Radio</div>
-                <div id="alc-guidance" style="font-size: 0.8rem; color: var(--text-secondary);">
-                    Loading radio-specific guidance...
-                </div>
-                <div id="alc-target" style="font-size: 0.9rem; color: var(--success); margin-top: 6px; font-weight: 500; display: none;">
-                </div>
+                <div style="font-size: 0.85rem; color: var(--accent); margin-bottom: 8px; font-weight: 600;">Level Adjustment</div>
+                <table class="config-table" style="font-size: 0.8rem;">
+                    <tr>
+                        <td style="width: 35%; color: var(--text-muted);">RX too low</td>
+                        <td>Increase radio's audio output setting or USB interface input gain</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-muted);">RX too high</td>
+                        <td>Decrease radio's audio output setting</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-muted);">TX power low</td>
+                        <td>Increase TX Volume above, or increase radio's audio input setting</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-muted);">TX power unstable</td>
+                        <td>Decrease TX Volume above (ALC kicking in)</td>
+                    </tr>
+                </table>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
+                    For USB interfaces (Digirig, SignaLink): use <code>alsamixer -c {{ audio_card if audio_card is not none else 'X' }}</code> via SSH.<br>
+                    For radios with built-in USB audio (IC-7300, IC-705, etc): adjust levels in radio menu.
+                </p>
             </div>
         </div>
 
@@ -533,14 +511,14 @@
         <div class="card">
             <div class="card-title">FreeDV Mode</div>
             <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">
-                Adjust based on band conditions. Lower modes are more robust but slower.
+                Start with DATAC3 (recommended). Use DATAC1 for strong signals, DATAC4 for weak/noisy paths.
             </p>
 
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <select id="freedv-mode-select" style="flex: 1; padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.9rem;">
-                    <option value="DATAC1">DATAC1 (290 bps) - Good conditions, ~5 dB SNR</option>
-                    <option value="DATAC3">DATAC3 (124 bps) - Moderate conditions, ~0 dB SNR</option>
-                    <option value="DATAC4">DATAC4 (87 bps) - Poor conditions, -4 dB SNR</option>
+                    <option value="DATAC1">DATAC1 (290 bps) - Best speed, needs strong signal</option>
+                    <option value="DATAC3">DATAC3 (124 bps) - Balanced, works in moderate conditions</option>
+                    <option value="DATAC4">DATAC4 (87 bps) - Most robust, works in poor conditions</option>
                 </select>
                 <button class="btn btn-small" onclick="changeFreeDVMode()">Apply</button>
             </div>
@@ -548,7 +526,7 @@
             <div style="background: rgba(201, 42, 42, 0.1); border-left: 3px solid var(--accent); padding: 10px; border-radius: 4px;">
                 <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
                     <strong style="color: var(--accent);">Important:</strong> All stations must use the same mode to communicate.
-                    Coordinate with other operators before changing. Modem will restart when mode is changed.
+                    Coordinate with other operators before changing.
                 </p>
             </div>
 
@@ -620,9 +598,10 @@
 
         <!-- Connection Info -->
         <div class="info-box">
-            <h3>Connect with Sideband/Columba</h3>
+            <h3>Connect from Sideband or Columba</h3>
             <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
-                Settings → Connectivity → Add Interface → <strong>TCP Client</strong>
+                1. Connect phone to <strong>ReticulumHF</strong> WiFi<br>
+                2. Open app → Settings → Connectivity → Add Interface → <strong>TCP Client Interface</strong>
             </p>
             <table class="config-table">
                 <tr><td>Interface Type</td><td><code>TCP Client Interface</code></td></tr>
@@ -634,9 +613,10 @@
         </div>
 
         <div class="info-box">
-            <h3>Connect with MeshChat</h3>
+            <h3>Connect from MeshChat</h3>
             <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
-                Settings → Interfaces → Add → <strong>TCP Client Interface</strong>
+                1. Connect phone to <strong>ReticulumHF</strong> WiFi<br>
+                2. Open app → Settings → Interfaces → Add → <strong>TCP Client Interface</strong>
             </p>
             <table class="config-table">
                 <tr><td>Interface Type</td><td><code>TCP Client Interface</code></td></tr>
@@ -668,36 +648,12 @@
         <div class="info-box">
             <h3>CLI Commands (via SSH)</h3>
             <table class="config-table" style="font-size: 0.8rem;">
-                <tr><td style="width: 45%;"><strong>ALSA Mixer (TUI)</strong></td><td>
+                <tr><td style="width: 40%;"><strong>Audio Mixer</strong></td><td>
                     <div class="copy-box" style="margin: 2px 0;">
                         <code id="cmd-alsamixer">alsamixer -c {{ audio_card if audio_card is not none else 'X' }}</code>
                         <button class="copy-btn" onclick="copyText('cmd-alsamixer')">Copy</button>
                     </div>
-                    <span style="color: var(--text-muted); font-size: 0.75rem;">Arrow keys to adjust, M to mute, ESC to exit</span>
-                </td></tr>
-                <tr><td><strong>Show ALSA Controls</strong></td><td>
-                    <div class="copy-box" style="margin: 2px 0;">
-                        <code id="cmd-amixer">amixer -c {{ audio_card if audio_card is not none else 'X' }} scontents</code>
-                        <button class="copy-btn" onclick="copyText('cmd-amixer')">Copy</button>
-                    </div>
-                </td></tr>
-                <tr><td><strong>Set Speaker (TX)</strong></td><td>
-                    <div class="copy-box" style="margin: 2px 0;">
-                        <code id="cmd-speaker">amixer -c {{ audio_card if audio_card is not none else 'X' }} sset Speaker 80%</code>
-                        <button class="copy-btn" onclick="copyText('cmd-speaker')">Copy</button>
-                    </div>
-                </td></tr>
-                <tr><td><strong>Set Mic Capture (RX)</strong></td><td>
-                    <div class="copy-box" style="margin: 2px 0;">
-                        <code id="cmd-capture">amixer -c {{ audio_card if audio_card is not none else 'X' }} cset name='Mic Capture Volume' 75%</code>
-                        <button class="copy-btn" onclick="copyText('cmd-capture')">Copy</button>
-                    </div>
-                </td></tr>
-                <tr><td><strong>Disable AGC</strong></td><td>
-                    <div class="copy-box" style="margin: 2px 0;">
-                        <code id="cmd-agc">amixer -c {{ audio_card if audio_card is not none else 'X' }} sset 'Auto Gain Control' off</code>
-                        <button class="copy-btn" onclick="copyText('cmd-agc')">Copy</button>
-                    </div>
+                    <span style="color: var(--text-muted); font-size: 0.75rem;">Arrow keys adjust, M mutes, F6 selects card, ESC exits</span>
                 </td></tr>
                 <tr><td><strong>Service Status</strong></td><td>
                     <div class="copy-box" style="margin: 2px 0;">
@@ -718,35 +674,21 @@
         <div class="info-box">
             <h3>Troubleshooting</h3>
             <table class="config-table" style="font-size: 0.8rem;">
-                <tr><td style="width: 45%;"><strong>Radio power very low/zero</strong></td><td>
-                    1. Increase ALSA Speaker level<br>
-                    2. Increase TX Audio Level (0 dB)<br>
-                    3. Check radio TX input menu (AUX IN, DATA IN, etc.)<br>
-                    4. For Xiegu: target ALC 90-100 (reversed)
+                <tr><td style="width: 40%;"><strong>Low/no TX power</strong></td><td>
+                    Increase TX Volume slider above, or increase radio's audio input level
                 </td></tr>
-                <tr><td><strong>Radio power fluctuates/unstable</strong></td><td>
-                    1. Reduce ALSA Speaker level<br>
-                    2. Reduce TX Audio Level (-3 to -6 dB)<br>
-                    3. For most radios: target ALC near zero<br>
-                    4. Check radio TX input menu isn't too high
+                <tr><td><strong>TX power unstable</strong></td><td>
+                    Decrease TX Volume slider (ALC is kicking in)
                 </td></tr>
-                <tr><td><strong>No RX signal in freedvtnc2</strong></td><td>
-                    1. Increase ALSA Mic Capture level (not Mic Playback)<br>
-                    2. Check radio audio output menu (AUX OUT, DATA OUT)<br>
-                    3. Verify AGC is OFF in ALSA mixer<br>
-                    4. Target -10 to -5 dB in freedvtnc2
-                </td></tr>
-                <tr><td><strong>RX level fluctuates</strong></td><td>
-                    1. Disable AGC in ALSA mixer<br>
-                    2. Disable radio AGC (for RX audio path)<br>
-                    3. Check radio RF Gain setting
+                <tr><td><strong>RX level too low</strong></td><td>
+                    Increase radio's audio output level, or use alsamixer to increase input gain
                 </td></tr>
                 <tr><td><strong>Can't connect from phone</strong></td><td>
-                    1. Connect to ReticulumHF WiFi network<br>
-                    2. Use TCP Client Interface on port 4242<br>
-                    3. Verify gateway shows "Active"
+                    Connect to ReticulumHF WiFi, use TCP Client Interface on port 4242
                 </td></tr>
-                <tr><td><strong>freedvtnc2 won't start</strong></td><td>Check rigctld running first (CAT control)</td></tr>
+                <tr><td><strong>freedvtnc2 won't start</strong></td><td>
+                    Check rigctld is running first (provides CAT control)
+                </td></tr>
             </table>
         </div>
 
@@ -786,9 +728,7 @@
     </div>
 
     <script>
-        let audioMonitorInterval = null;
-        let isMonitoring = false;
-        let currentAudioCard = null;
+        let rxLevelInterval = null;
 
         async function apiFetch(url, options = {}) {
             const bustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
@@ -802,38 +742,12 @@
                 const data = await response.json();
                 document.getElementById('radio-config').textContent =
                     data.radio ? `Radio: ${data.radio}` : 'Not configured';
-                if (data.audio_card !== undefined && data.audio_card !== null) {
-                    currentAudioCard = parseInt(data.audio_card);
-                    // Load ALSA controls once we have the card
-                    loadALSAControls();
-                }
                 // Set current FreeDV mode
                 if (data.freedv_mode) {
                     document.getElementById('freedv-mode-select').value = data.freedv_mode;
                 }
                 // Load TX audio level
                 fetchTxAudio();
-
-                // Display radio-specific ALC guidance
-                const alcGuidanceEl = document.getElementById('alc-guidance');
-                const alcTargetEl = document.getElementById('alc-target');
-                if (data.alc_guidance) {
-                    alcGuidanceEl.textContent = data.alc_guidance;
-                    if (data.alc_reversed) {
-                        alcGuidanceEl.style.color = 'var(--warning)';
-                    } else {
-                        alcGuidanceEl.style.color = 'var(--text-secondary)';
-                    }
-                } else {
-                    alcGuidanceEl.textContent = 'Watch ALC meter during TX. Adjust levels until you get stable power output.';
-                }
-                if (data.alc_target) {
-                    alcTargetEl.textContent = `Target ALC: ${data.alc_target}`;
-                    alcTargetEl.style.display = 'block';
-                    if (data.alc_reversed) {
-                        alcTargetEl.style.color = 'var(--warning)';
-                    }
-                }
             } catch (err) {
                 document.getElementById('radio-config').textContent = 'Error loading config';
             }
@@ -849,20 +763,55 @@
                     const valueEl = document.getElementById('tx-audio-value');
                     slider.value = data.tx_output_volume;
                     valueEl.textContent = data.tx_output_volume + ' dB';
-                    updateAlcWarning(data.tx_output_volume);
                 }
             } catch (err) {
                 console.error('Failed to fetch TX audio:', err);
             }
         }
 
-        function updateAlcWarning(volume) {
-            const warning = document.getElementById('alc-warning');
-            // Show warning if volume is higher than -4 dB (too hot)
-            if (volume > -4) {
-                warning.style.display = 'block';
+        // RX Level from modem (via command interface)
+        async function fetchRxLevel() {
+            try {
+                const response = await apiFetch('/api/modem-levels');
+                const data = await response.json();
+                if (data.success && data.rx !== undefined) {
+                    updateRxDisplay(data.rx);
+                } else if (!data.success) {
+                    document.getElementById('rx-level-status').textContent = 'Modem not responding';
+                    document.getElementById('rx-level-status').style.color = 'var(--warning)';
+                }
+            } catch (err) {
+                document.getElementById('rx-level-status').textContent = 'Cannot reach modem';
+                document.getElementById('rx-level-status').style.color = 'var(--error)';
+            }
+        }
+
+        function updateRxDisplay(levelDb) {
+            // Scale: -60 dB = 0%, 0 dB = 100%
+            const pct = Math.max(0, Math.min(100, (levelDb + 60) * (100/60)));
+            document.getElementById('rx-meter-bar').style.width = pct + '%';
+            document.getElementById('rx-level-value').textContent = levelDb.toFixed(1) + ' dB';
+
+            const statusEl = document.getElementById('rx-level-status');
+            if (levelDb > -3) {
+                statusEl.textContent = 'Too high - reduce radio audio output';
+                statusEl.style.color = 'var(--error)';
+            } else if (levelDb > -15) {
+                statusEl.textContent = 'Good level';
+                statusEl.style.color = 'var(--success)';
+            } else if (levelDb > -35) {
+                statusEl.textContent = 'Low signal or noise floor';
+                statusEl.style.color = 'var(--text-muted)';
             } else {
-                warning.style.display = 'none';
+                statusEl.textContent = 'Very quiet - check audio path';
+                statusEl.style.color = 'var(--text-muted)';
+            }
+        }
+
+        function startRxLevelPolling() {
+            if (!rxLevelInterval) {
+                fetchRxLevel(); // immediate first fetch
+                rxLevelInterval = setInterval(fetchRxLevel, 1000);
             }
         }
 
@@ -870,7 +819,6 @@
             const valueEl = document.getElementById('tx-audio-value');
             const statusEl = document.getElementById('tx-audio-status');
             valueEl.textContent = value + ' dB';
-            updateAlcWarning(parseInt(value));
 
             statusEl.textContent = 'Applying...';
             statusEl.style.color = 'var(--warning)';
@@ -884,12 +832,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    statusEl.textContent = 'Applied. Modem restarting...';
+                    statusEl.textContent = 'Applied';
                     statusEl.style.color = 'var(--success)';
                     setTimeout(() => {
                         statusEl.textContent = '';
-                        checkServiceStatus();
-                    }, 3000);
+                    }, 2000);
                 } else {
                     statusEl.textContent = 'Error: ' + (data.error || 'Failed');
                     statusEl.style.color = 'var(--error)';
@@ -904,7 +851,7 @@
             const newMode = document.getElementById('freedv-mode-select').value;
             const statusEl = document.getElementById('freedv-mode-status');
 
-            if (!confirm(`Change to ${newMode}?\n\nThis will restart the modem. All stations must use the same mode.`)) {
+            if (!confirm(`Change to ${newMode}?\n\nAll stations must use the same mode to communicate.`)) {
                 return;
             }
 
@@ -920,13 +867,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    statusEl.textContent = `Mode changed to ${newMode}. Modem restarting...`;
+                    statusEl.textContent = `Mode changed to ${newMode}`;
                     statusEl.style.color = 'var(--success)';
-                    // Refresh service status after a moment
                     setTimeout(() => {
-                        checkServiceStatus();
                         statusEl.textContent = `Current mode: ${newMode}`;
-                    }, 3000);
+                    }, 2000);
                 } else {
                     statusEl.textContent = 'Error: ' + (data.error || 'Failed to change mode');
                     statusEl.style.color = 'var(--error)';
@@ -1053,234 +998,6 @@
                     document.getElementById('health-clients').textContent = data.count;
                 }
             } catch (err) {}
-        }
-
-        // Audio monitoring
-        // Load ALSA controls for the audio card
-        async function loadALSAControls() {
-            if (currentAudioCard === null) return;
-
-            try {
-                const resp = await fetch(`/api/audio-controls/${currentAudioCard}`);
-                const data = await resp.json();
-
-                if (!data.success || !data.controls) return;
-
-                const sliderDiv = document.getElementById('alsa-sliders');
-                const micSlider = document.getElementById('mic-slider');
-                const speakerSlider = document.getElementById('speaker-slider');
-                const noAlsaMsg = document.getElementById('no-alsa-msg');
-
-                const hasControls = data.controls.all && data.controls.all.length > 0;
-
-                if (hasControls) {
-                    sliderDiv.style.display = 'block';
-
-                    // Check for Mic control
-                    if (data.controls.all.includes('Mic')) {
-                        micSlider.style.display = 'block';
-                        const levelResp = await fetch(`/api/audio-level/get/${currentAudioCard}/Mic`);
-                        const levelData = await levelResp.json();
-                        if (levelData.success) {
-                            document.getElementById('mic-range').value = levelData.level;
-                            document.getElementById('mic-value').textContent = levelData.level + '%';
-                        }
-                    }
-
-                    // Check for Speaker control
-                    if (data.controls.all.includes('Speaker')) {
-                        speakerSlider.style.display = 'block';
-                        const levelResp = await fetch(`/api/audio-level/get/${currentAudioCard}/Speaker`);
-                        const levelData = await levelResp.json();
-                        if (levelData.success) {
-                            document.getElementById('speaker-range').value = levelData.level;
-                            document.getElementById('speaker-value').textContent = levelData.level + '%';
-                        }
-                    }
-
-                    if (!data.controls.all.includes('Mic') && !data.controls.all.includes('Speaker')) {
-                        noAlsaMsg.style.display = 'block';
-                    }
-                } else {
-                    sliderDiv.style.display = 'block';
-                    noAlsaMsg.style.display = 'block';
-                }
-            } catch (e) {
-                console.error('Failed to load ALSA controls:', e);
-            }
-        }
-
-        // Slider event handlers
-        document.getElementById('mic-range').addEventListener('input', function() {
-            document.getElementById('mic-value').textContent = this.value + '%';
-        });
-        document.getElementById('mic-range').addEventListener('change', async function() {
-            if (currentAudioCard === null) return;
-            await fetch('/api/audio-level/set', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({card: currentAudioCard, control: 'Mic', level: parseInt(this.value)})
-            });
-        });
-
-        document.getElementById('speaker-range').addEventListener('input', function() {
-            document.getElementById('speaker-value').textContent = this.value + '%';
-        });
-        document.getElementById('speaker-range').addEventListener('change', async function() {
-            if (currentAudioCard === null) return;
-            await fetch('/api/audio-level/set', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({card: currentAudioCard, control: 'Speaker', level: parseInt(this.value)})
-            });
-        });
-
-        async function checkAudioLevel() {
-            if (currentAudioCard === null) {
-                // Try to get from config
-                try {
-                    const resp = await apiFetch('/api/config-info');
-                    const data = await resp.json();
-                    if (data.audio_card !== undefined) {
-                        currentAudioCard = data.audio_card;
-                        loadALSAControls();  // Load ALSA controls when we have the card
-                    }
-                } catch (e) {}
-            }
-
-            if (currentAudioCard === null) {
-                document.getElementById('audio-level-status').textContent = 'No audio card configured';
-                return;
-            }
-
-            const btn = document.getElementById('check-audio-btn');
-            btn.textContent = '...';
-            btn.disabled = true;
-
-            try {
-                const response = await fetch(`/api/audio-level/check/${currentAudioCard}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    updateAudioDisplay(data.rms_db);
-                } else if (data.device_busy) {
-                    const statusEl = document.getElementById('audio-level-status');
-                    statusEl.innerHTML = 'Audio in use by modem. <a href="#" onclick="stopModemAndCheck();return false;" style="color:var(--accent)">Stop modem to check?</a>';
-                    statusEl.style.color = 'var(--warning)';
-                } else {
-                    document.getElementById('audio-level-status').textContent = data.error || 'Check failed';
-                }
-            } catch (err) {
-                document.getElementById('audio-level-status').textContent = 'Error: ' + err.message;
-            } finally {
-                btn.textContent = 'Check Level';
-                btn.disabled = false;
-            }
-        }
-
-        async function stopModemAndCheck() {
-            if (!confirm('Stop modem to check audio levels?\n\nThe modem will automatically restart in 5 seconds.')) return;
-
-            try {
-                // Stop freedvtnc2
-                await fetch('/api/service/freedvtnc2/stop', {method: 'POST'});
-                document.getElementById('audio-level-status').textContent = 'Modem stopped. Checking level...';
-
-                // Wait a moment for device to be released
-                await new Promise(r => setTimeout(r, 1000));
-
-                // Check level
-                await checkAudioLevel();
-
-                // Show restart countdown
-                const statusEl = document.getElementById('audio-level-status');
-                const originalText = statusEl.textContent;
-                let countdown = 5;
-                const countdownInterval = setInterval(() => {
-                    statusEl.textContent = originalText + ` (modem restarting in ${countdown}s)`;
-                    countdown--;
-                    if (countdown < 0) clearInterval(countdownInterval);
-                }, 1000);
-
-                // Restart modem after 5 seconds
-                setTimeout(async () => {
-                    clearInterval(countdownInterval);
-                    await fetch('/api/service/freedvtnc2/start', {method: 'POST'});
-                    checkServiceStatus();
-                    statusEl.textContent = originalText + ' (modem restarted)';
-                    setTimeout(() => {
-                        statusEl.textContent = originalText;
-                    }, 2000);
-                }, 5000);
-            } catch (err) {
-                document.getElementById('audio-level-status').textContent = 'Error: ' + err.message;
-            }
-        }
-
-        function updateAudioDisplay(levelDb) {
-            const pct = Math.max(0, Math.min(100, (levelDb + 60) * (100/60)));
-            document.getElementById('audio-meter-bar').style.width = pct + '%';
-            document.getElementById('audio-level-value').textContent = levelDb.toFixed(1) + ' dB';
-
-            const statusEl = document.getElementById('audio-level-status');
-            if (levelDb > -3) {
-                statusEl.textContent = 'Signal too hot - reduce radio output or gain';
-                statusEl.style.color = 'var(--error)';
-            } else if (levelDb > -10) {
-                statusEl.textContent = 'Good signal level for decoding';
-                statusEl.style.color = 'var(--success)';
-            } else if (levelDb > -30) {
-                statusEl.textContent = 'Normal (noise floor or weak signal)';
-                statusEl.style.color = 'var(--text-muted)';
-            } else {
-                statusEl.textContent = 'Quiet - waiting for signal';
-                statusEl.style.color = 'var(--text-muted)';
-            }
-        }
-
-        async function toggleAudioMonitor() {
-            const btn = document.getElementById('monitor-audio-btn');
-
-            if (isMonitoring) {
-                await fetch('/api/audio-monitor/stop', {method: 'POST'});
-                clearInterval(audioMonitorInterval);
-                isMonitoring = false;
-                btn.textContent = 'Start Monitor';
-            } else {
-                if (currentAudioCard === null) {
-                    await checkAudioLevel(); // This will set currentAudioCard
-                    if (currentAudioCard === null) return;
-                }
-
-                const resp = await fetch('/api/audio-monitor/start', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({card: currentAudioCard})
-                });
-                const data = await resp.json();
-
-                if (data.success) {
-                    isMonitoring = true;
-                    btn.textContent = 'Stop Monitor';
-                    audioMonitorInterval = setInterval(pollAudioLevels, 200);
-                } else if (data.device_busy) {
-                    const statusEl = document.getElementById('audio-level-status');
-                    statusEl.innerHTML = 'Audio in use by modem. <a href="#" onclick="stopModemAndCheck();return false;" style="color:var(--accent)">Stop modem to check?</a>';
-                    statusEl.style.color = 'var(--warning)';
-                } else {
-                    document.getElementById('audio-level-status').textContent = data.error || 'Failed to start monitor';
-                }
-            }
-        }
-
-        async function pollAudioLevels() {
-            try {
-                const response = await fetch('/api/audio-monitor/levels');
-                const data = await response.json();
-                if (data.success && data.levels) {
-                    updateAudioDisplay(data.levels.rms_db);
-                }
-            } catch (e) {}
         }
 
         // Service control
@@ -1425,6 +1142,7 @@
 
         // Initial load
         refreshStatus();
+        startRxLevelPolling();
 
         // Auto-refresh
         setInterval(refreshStatus, 30000);
