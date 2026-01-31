@@ -1,6 +1,6 @@
 # ReticulumHF
 
-**v0.3.2-alpha** - Reticulum mesh networking over HF radio using FreeDV data modes.
+**v0.3.2-alpha** - Reticulum networking over HF radio using FreeDV data modes.
 
 ## What It Does
 
