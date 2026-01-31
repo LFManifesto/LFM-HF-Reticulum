@@ -437,6 +437,49 @@
                 Connect to other applications running on your network. Configure now or later from the dashboard.
             </p>
 
+            <!-- JS8Call -->
+            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                <div class="checkbox-row" style="margin-bottom: 8px;">
+                    <input type="checkbox" id="js8-enable">
+                    <label for="js8-enable"><strong>JS8Call Integration</strong></label>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
+                    Connect to JS8Call's API to see JS8 stations on the dashboard map.
+                    JS8Call must have TCP API enabled (File → Settings → Reporting → Enable TCP Server API).
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 2;">
+                        <label for="js8-host">Host</label>
+                        <input type="text" id="js8-host" value="127.0.0.1" placeholder="127.0.0.1">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="js8-port">Port</label>
+                        <input type="text" id="js8-port" value="2442" placeholder="2442">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAK -->
+            <div style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                <div class="checkbox-row" style="margin-bottom: 8px;">
+                    <input type="checkbox" id="tak-enable">
+                    <label for="tak-enable"><strong>TAK Integration</strong></label>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
+                    Push discovered stations to TAK/ATAK as Cursor-on-Target events.
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 2;">
+                        <label for="tak-host">TAK Server Host</label>
+                        <input type="text" id="tak-host" placeholder="192.168.1.100">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="tak-port">Port</label>
+                        <input type="text" id="tak-port" value="8087" placeholder="8087">
+                    </div>
+                </div>
+            </div>
+
             <!-- I2P Transport -->
             <div style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px;">
                 <div class="checkbox-row" style="margin-bottom: 8px;">
@@ -732,6 +775,14 @@
                 // Beacon settings
                 beacon_message: callsign && grid ? `${callsign} ${grid}` : (callsign || ''),
                 tx_beacon: document.getElementById('tx-beacon').checked,
+                // JS8Call settings
+                js8_enabled: document.getElementById('js8-enable').checked,
+                js8_host: document.getElementById('js8-host').value || '127.0.0.1',
+                js8_port: parseInt(document.getElementById('js8-port').value) || 2442,
+                // TAK settings
+                tak_enabled: document.getElementById('tak-enable').checked,
+                tak_host: document.getElementById('tak-host').value || '',
+                tak_port: parseInt(document.getElementById('tak-port').value) || 8087,
                 // I2P settings
                 i2p_enabled: document.getElementById('i2p-enable').checked,
                 i2p_peer: document.getElementById('i2p-peer').value || 'kfamlmwnlw3acqfxip4x6kt53i2tr4ksp5h4qxwvxhoq7mchpolq.b32.i2p',

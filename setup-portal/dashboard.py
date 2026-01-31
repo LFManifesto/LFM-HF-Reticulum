@@ -7,6 +7,7 @@ Provides API endpoints for the enhanced dashboard:
 - RX level history
 - Interface status
 - Network health metrics
+- TAK CoT integration
 """
 
 import json
@@ -23,6 +24,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from xml.etree import ElementTree as ET
 
 from flask import Blueprint, jsonify, request
 
@@ -74,6 +76,12 @@ class DashboardState:
 
         # Operating mode: hybrid (default), hf_only, internet_only
         self.operating_mode = "hybrid"
+
+        # TAK settings
+        self.tak_enabled = False
+        self.tak_host = ""
+        self.tak_port = 8087
+        self.tak_protocol = "udp"
 
     def add_rx_reading(self, level_db: float, mode: str = ""):
         """Add RX level reading to history."""
@@ -677,6 +685,118 @@ def get_band_conditions() -> List[Dict]:
 
 
 # ============================================================================
+# TAK CoT Integration
+# ============================================================================
+
+def generate_cot_event(peer: Dict, stale_minutes: int = 60) -> str:
+    """
+    Generate Cursor on Target (CoT) XML for a beacon peer.
+
+    TAK uses CoT events to display markers on the map.
+    """
+    now = datetime.utcnow()
+    stale = datetime.utcfromtimestamp(time.time() + stale_minutes * 60)
+
+    # Get lat/lon from grid
+    lat, lon = 0.0, 0.0
+    if peer.get("grid"):
+        coords = grid_to_latlon(peer["grid"])
+        if coords:
+            lat, lon = coords
+
+    # CoT type: a-f-G-U-C (atom, friend, ground, unit, combat)
+    # For ham radio, we'll use a-f-G-E-S (atom, friend, ground, equipment, sensor)
+    cot_type = "a-f-G-E-S"
+
+    # Unique ID
+    uid = f"reticulumhf-{peer['identity_short']}"
+
+    # Build XML
+    event = ET.Element("event")
+    event.set("version", "2.0")
+    event.set("type", cot_type)
+    event.set("uid", uid)
+    event.set("how", "m-g")  # machine-generated
+    event.set("time", now.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    event.set("start", now.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    event.set("stale", stale.strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+    # Point (location)
+    point = ET.SubElement(event, "point")
+    point.set("lat", str(lat))
+    point.set("lon", str(lon))
+    point.set("hae", "0")  # height above ellipsoid
+    point.set("ce", "5000")  # circular error (meters) - grid square accuracy
+    point.set("le", "9999999")  # linear error
+
+    # Detail
+    detail = ET.SubElement(event, "detail")
+
+    # Contact info
+    contact = ET.SubElement(detail, "contact")
+    callsign = peer.get("callsign", peer["identity_short"])
+    contact.set("callsign", callsign)
+
+    # Remarks
+    remarks = ET.SubElement(detail, "remarks")
+    remarks_text = f"ReticulumHF Beacon\n"
+    remarks_text += f"Grid: {peer.get('grid', 'Unknown')}\n"
+    remarks_text += f"RX: {peer.get('rx_level_db', -99):.1f} dB\n"
+    remarks_text += f"Count: {peer.get('rx_count', 0)}\n"
+    remarks_text += f"Interface: {peer.get('interface', 'HF')}\n"
+    remarks_text += f"ID: {peer.get('identity', '')[:32]}"
+    remarks.text = remarks_text
+
+    # Custom fields
+    reticulumhf = ET.SubElement(detail, "reticulumhf")
+    reticulumhf.set("identity", peer.get("identity", ""))
+    reticulumhf.set("grid", peer.get("grid", ""))
+    reticulumhf.set("rx_db", str(peer.get("rx_level_db", -99)))
+    reticulumhf.set("rx_count", str(peer.get("rx_count", 0)))
+    reticulumhf.set("is_prop_node", str(peer.get("is_prop_node", False)).lower())
+
+    return ET.tostring(event, encoding="unicode")
+
+
+def push_to_tak(peer: Dict) -> bool:
+    """Push a peer as CoT event to TAK server."""
+    if not state.tak_enabled or not state.tak_host:
+        return False
+
+    try:
+        cot_xml = generate_cot_event(peer)
+
+        if state.tak_protocol == "udp":
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.sendto(cot_xml.encode('utf-8'), (state.tak_host, state.tak_port))
+        else:  # TCP
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(5)
+                sock.connect((state.tak_host, state.tak_port))
+                sock.send(cot_xml.encode('utf-8'))
+
+        log.debug(f"Pushed {peer.get('callsign', peer['identity_short'])} to TAK")
+        return True
+
+    except Exception as e:
+        log.error(f"TAK push failed: {e}")
+        return False
+
+
+def push_all_peers_to_tak() -> int:
+    """Push all current peers to TAK server."""
+    if not state.tak_enabled:
+        return 0
+
+    count = 0
+    for peer in state.get_peers(max_age_hours=2):
+        if push_to_tak(peer):
+            count += 1
+
+    return count
+
+
+# ============================================================================
 # Flask API Routes
 # ============================================================================
 
@@ -716,6 +836,20 @@ def api_add_peer():
         frequency_khz=data.get('frequency_khz', 0),
         flags=data.get('flags', 0)
     )
+
+    # Push to TAK if enabled
+    if state.tak_enabled:
+        peer_dict = {
+            "identity": peer.identity,
+            "identity_short": peer.identity[:16],
+            "callsign": peer.callsign,
+            "grid": peer.grid,
+            "rx_level_db": peer.rx_level_db,
+            "rx_count": peer.rx_count,
+            "interface": peer.interface,
+            "is_prop_node": bool(peer.flags & 0x02),
+        }
+        push_to_tak(peer_dict)
 
     return jsonify({"status": "ok", "rx_count": peer.rx_count})
 
@@ -771,6 +905,92 @@ def api_get_band_conditions():
         "conditions": conditions,
         "timestamp": time.time()
     })
+
+
+@dashboard_bp.route('/tak/config', methods=['GET'])
+def api_get_tak_config():
+    """Get TAK integration configuration."""
+    return jsonify({
+        "enabled": state.tak_enabled,
+        "host": state.tak_host,
+        "port": state.tak_port,
+        "protocol": state.tak_protocol
+    })
+
+
+@dashboard_bp.route('/tak/config', methods=['POST'])
+def api_set_tak_config():
+    """Set TAK integration configuration."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    state.tak_enabled = bool(data.get('enabled', False))
+    state.tak_host = str(data.get('host', ''))
+
+    # Validate port
+    try:
+        port = int(data.get('port', 8087))
+        if not 1 <= port <= 65535:
+            return jsonify({"error": "Port must be 1-65535"}), 400
+        state.tak_port = port
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid port number"}), 400
+
+    protocol = data.get('protocol', 'udp')
+    if protocol not in ('udp', 'tcp'):
+        return jsonify({"error": "Protocol must be 'udp' or 'tcp'"}), 400
+    state.tak_protocol = protocol
+
+    # Persist to config file
+    config_path = Path("/etc/reticulumhf/tak.json")
+    try:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_path, "w") as f:
+            json.dump({
+                "enabled": state.tak_enabled,
+                "host": state.tak_host,
+                "port": state.tak_port,
+                "protocol": state.tak_protocol,
+            }, f, indent=2)
+    except Exception as e:
+        log.warning(f"Failed to persist TAK config: {e}")
+
+    return jsonify({"status": "ok"})
+
+
+@dashboard_bp.route('/tak/push', methods=['POST'])
+def api_tak_push():
+    """Push all peers to TAK server."""
+    count = push_all_peers_to_tak()
+    return jsonify({
+        "status": "ok",
+        "pushed": count
+    })
+
+
+@dashboard_bp.route('/tak/test', methods=['POST'])
+def api_tak_test():
+    """Send test CoT event to TAK server."""
+    if not state.tak_enabled or not state.tak_host:
+        return jsonify({"error": "TAK not configured"}), 400
+
+    # Create test peer
+    test_peer = {
+        "identity": "0" * 32,
+        "identity_short": "0" * 16,
+        "callsign": "TEST-RETICULUMHF",
+        "grid": request.args.get('grid', 'FM29'),
+        "rx_level_db": -15,
+        "rx_count": 1,
+        "interface": "TEST",
+        "is_prop_node": False,
+    }
+
+    if push_to_tak(test_peer):
+        return jsonify({"status": "ok", "message": "Test event sent"})
+    else:
+        return jsonify({"error": "Failed to send test event"}), 500
 
 
 @dashboard_bp.route('/grid/convert', methods=['GET'])
@@ -1017,267 +1237,6 @@ def control_i2p():
         return jsonify({"success": False, "error": "Invalid action"}), 400
 
     return jsonify({"success": result.returncode == 0})
-
-
-@dashboard_bp.route('/i2p-status', methods=['GET'])
-def get_i2p_status_detailed():
-    """Get detailed I2P status for dashboard display."""
-    try:
-        # Check if i2pd is running
-        result = subprocess.run(
-            ["systemctl", "is-active", "i2pd"],
-            capture_output=True, text=True, timeout=5
-        )
-        running = result.stdout.strip() == "active"
-
-        tunnel_status = "Offline"
-        tunnel_active = False
-        peer_count = 0
-        b32_address = "--"
-
-        if running:
-            tunnel_status = "Starting..."
-            # Try to get status from RNS (run as pi user to access RNS config)
-            try:
-                result = subprocess.run(
-                    ["sudo", "-u", "pi", "/home/pi/.local/bin/rnstatus", "-a"],
-                    capture_output=True, text=True, timeout=10
-                )
-                output = result.stdout
-
-                # Check for tunnel status (look for I2PInterfacePeer with Tunnel Active)
-                if "Tunnel Active" in output:
-                    tunnel_status = "Active"
-                    tunnel_active = True
-                elif "Creating Tunnel" in output:
-                    tunnel_status = "Creating..."
-
-                # Extract B32 address and traffic info
-                traffic_info = ""
-                in_peer_section = False
-                for line in output.split("\n"):
-                    if "I2P B32" in line:
-                        parts = line.split(":")
-                        if len(parts) > 1:
-                            b32_address = parts[-1].strip()
-                    # Track when we're in the I2PInterfacePeer section for traffic
-                    if "I2PInterfacePeer" in line:
-                        in_peer_section = True
-                    elif line.strip().startswith("I2PInterface["):
-                        in_peer_section = False  # Left peer section
-                    # Get traffic from I2PInterfacePeer section only
-                    if "Traffic" in line and in_peer_section and not traffic_info:
-                        match = re.search(r'↑([\d.]+\s*\w+)', line)
-                        if match:
-                            traffic_info = f"↑{match.group(1)}"
-                        match2 = re.search(r'↓([\d.]+\s*\w+)', line)
-                        if match2:
-                            traffic_info += f" ↓{match2.group(1)}"
-
-            except Exception as e:
-                log.warning(f"Could not get RNS I2P status: {e}")
-
-        return jsonify({
-            "success": True,
-            "running": running,
-            "tunnel_active": tunnel_active,
-            "tunnel_status": tunnel_status,
-            "traffic": traffic_info if traffic_info else "--",
-            "b32_address": b32_address
-        })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "tunnel_active": False,
-            "tunnel_status": "Error",
-            "peer_count": 0,
-            "b32_address": "--"
-        })
-
-
-# Propagation data caches
-_propagation_cache = {"data": None, "timestamp": 0, "ttl": 300}  # 5 minute cache
-
-
-def _fetch_n0nbh_conditions():
-    """Fetch band conditions from N0NBH solar data API."""
-    import urllib.request
-    import urllib.error
-    import re
-
-    try:
-        url = "https://www.hamqsl.com/solarxml.php"
-        req = urllib.request.Request(url, headers={'User-Agent': 'ReticulumHF/0.3'})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = response.read().decode('utf-8')
-
-            # Parse band conditions from XML
-            # Format: <band name="80m-40m" time="day">Fair</band>
-            conditions = {}
-            band_pattern = r'<band name="([^"]+)" time="([^"]+)">([^<]+)</band>'
-            matches = re.findall(band_pattern, data)
-            for band_name, time_of_day, condition in matches:
-                # Store both day and night conditions
-                key = f"{band_name}_{time_of_day}"
-                conditions[key] = condition.strip()
-
-            # Also get solar indices for context
-            sfi_match = re.search(r'<solarflux>(\d+)</solarflux>', data)
-            a_match = re.search(r'<aindex>(\d+)</aindex>', data)
-            k_match = re.search(r'<kindex>(\d+)</kindex>', data)
-
-            solar = {
-                "sfi": int(sfi_match.group(1)) if sfi_match else None,
-                "a_index": int(a_match.group(1)) if a_match else None,
-                "k_index": int(k_match.group(1)) if k_match else None
-            }
-
-            return {"conditions": conditions, "solar": solar}
-
-    except Exception as e:
-        log.warning(f"N0NBH fetch error: {e}")
-        return None
-
-
-def _fetch_psk_spots():
-    """Fetch SSB spot counts from PSKReporter."""
-    import urllib.request
-    import urllib.error
-    import re
-
-    try:
-        # SSB spots from last 30 minutes
-        url = "https://retrieve.pskreporter.info/query?flowStartSeconds=-1800&mode=SSB&rronly=1&appcontact=reticulumhf@lfmanifesto.org"
-        req = urllib.request.Request(url, headers={'User-Agent': 'ReticulumHF/0.3'})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = response.read().decode('utf-8')
-
-            # Count spots per band
-            band_counts = {
-                '160m': 0, '80m': 0, '40m': 0, '30m': 0,
-                '20m': 0, '17m': 0, '15m': 0, '12m': 0, '10m': 0
-            }
-
-            freqs = re.findall(r'frequency="(\d+)"', data)
-            for freq_str in freqs[:200]:  # Limit processing
-                freq = int(freq_str)
-                if 1800000 <= freq <= 2000000:
-                    band_counts['160m'] += 1
-                elif 3500000 <= freq <= 4000000:
-                    band_counts['80m'] += 1
-                elif 7000000 <= freq <= 7300000:
-                    band_counts['40m'] += 1
-                elif 10100000 <= freq <= 10150000:
-                    band_counts['30m'] += 1
-                elif 14000000 <= freq <= 14350000:
-                    band_counts['20m'] += 1
-                elif 18068000 <= freq <= 18168000:
-                    band_counts['17m'] += 1
-                elif 21000000 <= freq <= 21450000:
-                    band_counts['15m'] += 1
-                elif 24890000 <= freq <= 24990000:
-                    band_counts['12m'] += 1
-                elif 28000000 <= freq <= 29700000:
-                    band_counts['10m'] += 1
-
-            return band_counts
-
-    except urllib.error.HTTPError as e:
-        if e.code == 503:
-            log.info("PSKReporter rate limited (503)")
-        else:
-            log.warning(f"PSKReporter HTTP error {e.code}")
-        return None
-    except Exception as e:
-        log.warning(f"PSKReporter fetch error: {e}")
-        return None
-
-
-@dashboard_bp.route('/propagation', methods=['GET'])
-def get_propagation():
-    """
-    Get propagation data from N0NBH (band conditions) and PSKReporter (SSB spots).
-
-    N0NBH provides calculated band conditions (Good/Fair/Poor) based on solar data.
-    PSKReporter provides actual SSB spot counts per band.
-    Results are cached for 5 minutes.
-    """
-    global _propagation_cache
-
-    # Return cached data if fresh
-    if _propagation_cache["data"] and (time.time() - _propagation_cache["timestamp"]) < _propagation_cache["ttl"]:
-        return jsonify(_propagation_cache["data"])
-
-    try:
-        # Fetch both data sources
-        n0nbh_data = _fetch_n0nbh_conditions()
-        psk_spots = _fetch_psk_spots()
-
-        # Determine current time of day (simplified - use "day" for now)
-        # Could be enhanced to detect based on local time
-        time_of_day = "day"
-
-        # Build band data combining both sources
-        bands = []
-        band_groups = [
-            ("80m-40m", ["80m", "40m"]),
-            ("30m-20m", ["30m", "20m"]),
-            ("17m-15m", ["17m", "15m"]),
-            ("12m-10m", ["12m", "10m"])
-        ]
-
-        for group_name, group_bands in band_groups:
-            # Get N0NBH condition for this band group
-            condition = "Unknown"
-            if n0nbh_data and n0nbh_data["conditions"]:
-                key = f"{group_name}_{time_of_day}"
-                condition = n0nbh_data["conditions"].get(key, "Unknown")
-
-            # Sum PSKReporter spots for bands in this group
-            spot_count = 0
-            if psk_spots:
-                for band in group_bands:
-                    spot_count += psk_spots.get(band, 0)
-
-            bands.append({
-                "name": group_name,
-                "condition": condition,
-                "spots": spot_count
-            })
-
-        # Get solar indices
-        solar = {}
-        if n0nbh_data and n0nbh_data["solar"]:
-            solar = n0nbh_data["solar"]
-
-        result = {
-            "success": True,
-            "bands": bands,
-            "solar": solar,
-            "sources": {
-                "conditions": "N0NBH" if n0nbh_data else None,
-                "spots": "PSKReporter" if psk_spots else None
-            }
-        }
-
-        # Cache result
-        _propagation_cache["data"] = result
-        _propagation_cache["timestamp"] = time.time()
-
-        return jsonify(result)
-
-    except Exception as e:
-        log.error(f"Propagation endpoint error: {e}")
-        # Return cached data if available
-        if _propagation_cache["data"]:
-            _propagation_cache["data"]["cached"] = True
-            return jsonify(_propagation_cache["data"])
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "bands": []
-        })
 
 
 @dashboard_bp.route('/ethernet', methods=['GET'])
