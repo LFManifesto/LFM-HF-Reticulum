@@ -2100,10 +2100,59 @@ def get_modem_rx_level():
     return None
 
 
+def apply_operating_mode_to_modem():
+    """
+    Apply the current operating mode to freedvtnc2 TX gate.
+
+    Called on startup and when freedvtnc2 restarts.
+    """
+    mode = dashboard_state.operating_mode
+
+    if mode == "hybrid":
+        # Hybrid mode: TX disabled, beacon scheduler opens windows
+        success, response = freedvtnc2_command("TX DISABLE")
+        if success:
+            log.info("Applied hybrid mode: TX DISABLED (beacon scheduler controls windows)")
+        else:
+            log.warning(f"Failed to apply TX DISABLE: {response}")
+    elif mode == "hf_only":
+        # HF Only mode: TX always enabled
+        success, response = freedvtnc2_command("TX ENABLE")
+        if success:
+            log.info("Applied HF Only mode: TX ENABLED")
+        else:
+            log.warning(f"Failed to apply TX ENABLE: {response}")
+    elif mode == "internet_only":
+        # Internet Only mode: TX disabled
+        success, response = freedvtnc2_command("TX DISABLE")
+        if success:
+            log.info("Applied Internet Only mode: TX DISABLED")
+        else:
+            log.warning(f"Failed to apply TX DISABLE: {response}")
+
+
 def startup_integrations():
     """Start background integrations on app startup."""
     # Start RX level monitoring for dashboard
     start_rx_monitor(get_modem_rx_level, interval=5.0)
+
+    # Load operating mode from config and apply to modem
+    beacon_config_path = Path("/etc/reticulumhf/beacon.json")
+    if beacon_config_path.exists():
+        try:
+            with open(beacon_config_path) as f:
+                beacon_config = json.load(f)
+            dashboard_state.operating_mode = beacon_config.get("operating_mode", "hybrid")
+            log.info(f"Loaded operating mode: {dashboard_state.operating_mode}")
+        except Exception as e:
+            log.warning(f"Failed to load beacon config: {e}")
+
+    # Apply TX gate state after a delay (freedvtnc2 may still be starting)
+    def apply_mode_delayed():
+        time.sleep(5)  # Wait for freedvtnc2 to be ready
+        apply_operating_mode_to_modem()
+
+    threading.Thread(target=apply_mode_delayed, daemon=True).start()
 
     # Auto-connect to JS8Call if configured
     js8_config_path = Path("/etc/reticulumhf/js8call.json")
