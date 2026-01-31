@@ -297,54 +297,182 @@ def parse_rnstatus() -> Dict[str, Any]:
             timeout=5
         )
         if result.returncode == 0:
-            return parse_rnstatus_text(result.stdout)
+            parsed = parse_rnstatus_text(result.stdout)
+            if parsed.get("interfaces"):
+                return parsed
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
 
-    return {"error": "Could not get rnstatus"}
+    # Final fallback: derive interface status from config and services
+    return get_interface_status_from_config()
 
 
 def parse_rnstatus_text(output: str) -> Dict[str, Any]:
     """Parse text output of rnstatus."""
     interfaces = []
     current_interface = None
+    lines = output.split('\n')
 
-    for line in output.split('\n'):
-        line = line.strip()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
 
-        # Interface header
-        if line and not line.startswith(' ') and ':' in line:
+        # Look for interface headers - they start with "[" or have interface keywords
+        # Example formats:
+        #   [TCP Gateway]
+        #   TCP Gateway (connected)
+        #   Interface Name: Status
+        if stripped.startswith('[') and ']' in stripped:
+            # Format: [Interface Name]
             if current_interface:
                 interfaces.append(current_interface)
-            name = line.split(':')[0].strip()
+            name = stripped.strip('[]').strip()
             current_interface = {
                 "name": name,
                 "status": "unknown",
                 "tx_bytes": 0,
                 "rx_bytes": 0,
             }
-
-        # Interface details
-        elif current_interface and ':' in line:
-            key, _, value = line.partition(':')
+        elif stripped and not stripped.startswith(' ') and '(' in stripped:
+            # Format: Interface Name (status)
+            if current_interface:
+                interfaces.append(current_interface)
+            parts = stripped.split('(')
+            name = parts[0].strip()
+            status = parts[1].rstrip(')').strip() if len(parts) > 1 else "unknown"
+            current_interface = {
+                "name": name,
+                "status": status,
+                "tx_bytes": 0,
+                "rx_bytes": 0,
+            }
+        elif current_interface and ':' in stripped:
+            # Parse details
+            key, _, value = stripped.partition(':')
             key = key.strip().lower()
             value = value.strip()
 
-            if 'status' in key:
+            if any(x in key for x in ['status', 'state']):
                 current_interface['status'] = value
-            elif 'tx' in key and 'byte' in key.lower():
+            elif 'tx' in key and 'byte' in key:
                 try:
                     current_interface['tx_bytes'] = int(re.sub(r'[^\d]', '', value))
                 except ValueError:
                     pass
-            elif 'rx' in key and 'byte' in key.lower():
+            elif 'rx' in key and 'byte' in key:
                 try:
                     current_interface['rx_bytes'] = int(re.sub(r'[^\d]', '', value))
                 except ValueError:
                     pass
+            elif 'mode' in key:
+                current_interface['mode'] = value
 
     if current_interface:
         interfaces.append(current_interface)
+
+    return {"interfaces": interfaces}
+
+
+def get_interface_status_from_config() -> Dict[str, Any]:
+    """
+    Fallback: Get interface status by reading RNS config and checking services.
+
+    Used when rnstatus command doesn't return usable output.
+    """
+    interfaces = []
+
+    # Check for RNS config file
+    config_paths = [
+        Path("/home/pi/.reticulum/config"),
+        Path("/etc/reticulumhf/reticulum.config"),
+    ]
+
+    config_path = None
+    for p in config_paths:
+        if p.exists():
+            config_path = p
+            break
+
+    if not config_path:
+        return {"interfaces": [], "error": "No RNS config found"}
+
+    try:
+        with open(config_path) as f:
+            config_text = f.read()
+
+        # Parse interface sections [[Name]]
+        import re
+        interface_pattern = r'\[\[([^\]]+)\]\]'
+        matches = re.findall(interface_pattern, config_text)
+
+        for name in matches:
+            interface = {
+                "name": name,
+                "status": "unknown",
+                "tx_bytes": 0,
+                "rx_bytes": 0,
+            }
+
+            # Determine status based on interface type and service status
+            if "TCP Gateway" in name:
+                # Check if rnsd is running
+                try:
+                    result = subprocess.run(
+                        ["systemctl", "is-active", "reticulumhf-rnsd"],
+                        capture_output=True, text=True, timeout=2
+                    )
+                    interface["status"] = "Up" if result.stdout.strip() == "active" else "Down"
+                    interface["mode"] = "gateway"
+                except Exception:
+                    interface["status"] = "unknown"
+
+            elif "I2P" in name or "Lightfighter" in name:
+                # Check if i2pd is running and has tunnels
+                try:
+                    result = subprocess.run(
+                        ["systemctl", "is-active", "i2pd"],
+                        capture_output=True, text=True, timeout=2
+                    )
+                    if result.stdout.strip() == "active":
+                        # Check for tunnel connectivity
+                        try:
+                            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                                sock.settimeout(1.0)
+                                sock.connect(("127.0.0.1", 7070))
+                                interface["status"] = "Up (tunnels)"
+                        except Exception:
+                            interface["status"] = "Up (starting)"
+                    else:
+                        interface["status"] = "Down"
+                except Exception:
+                    interface["status"] = "unknown"
+
+            elif "FreeDV" in name or "HF" in name:
+                # Check if freedvtnc2 is running
+                try:
+                    result = subprocess.run(
+                        ["systemctl", "is-active", "freedvtnc2"],
+                        capture_output=True, text=True, timeout=2
+                    )
+                    if result.stdout.strip() == "active":
+                        # Check for KISS port connectivity
+                        try:
+                            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                                sock.settimeout(1.0)
+                                sock.connect(("127.0.0.1", 8001))
+                                interface["status"] = "Up"
+                                interface["mode"] = "boundary"
+                        except Exception:
+                            interface["status"] = "Connecting"
+                    else:
+                        interface["status"] = "Down"
+                except Exception:
+                    interface["status"] = "unknown"
+
+            interfaces.append(interface)
+
+    except Exception as e:
+        log.error(f"Failed to read RNS config: {e}")
+        return {"interfaces": [], "error": str(e)}
 
     return {"interfaces": interfaces}
 
@@ -998,16 +1126,41 @@ def get_txgate_status():
     """Get TX gate status from modem."""
     response = _send_modem_command("TX STATUS")
     if response:
-        # Parse response: ENABLED, DISABLED, or WINDOW:XX
-        parts = response.split(":")
-        status = parts[0].upper()
-        remaining = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
-        return jsonify({
-            "success": True,
-            "status": status,
-            "remaining_seconds": remaining,
-            "mode": state.operating_mode
-        })
+        # Parse response formats:
+        # "OK TX ENABLED" -> ENABLED
+        # "OK TX DISABLED" -> DISABLED
+        # "OK TX WINDOW:30" -> WINDOW with 30s remaining
+        # "ERROR ..." -> error
+        if response.startswith("OK TX "):
+            status_part = response[6:]  # Remove "OK TX "
+            if ":" in status_part:
+                status, remaining_str = status_part.split(":", 1)
+                remaining = int(remaining_str) if remaining_str.isdigit() else None
+            else:
+                status = status_part
+                remaining = None
+
+            return jsonify({
+                "success": True,
+                "status": status.upper(),
+                "remaining_seconds": remaining,
+                "mode": state.operating_mode
+            })
+        elif response.startswith("ERROR"):
+            return jsonify({
+                "success": True,
+                "status": "UNAVAILABLE",
+                "remaining_seconds": None,
+                "mode": state.operating_mode,
+                "error": response
+            })
+        else:
+            return jsonify({
+                "success": True,
+                "status": response,
+                "remaining_seconds": None,
+                "mode": state.operating_mode
+            })
     else:
         return jsonify({
             "success": False,
@@ -1032,7 +1185,8 @@ def set_txgate():
     else:
         return jsonify({"success": False, "error": "Invalid action"}), 400
 
-    return jsonify({"success": response is not None, "response": response})
+    success = response is not None and response.startswith("OK")
+    return jsonify({"success": success, "response": response})
 
 
 @dashboard_bp.route('/i2p', methods=['GET'])
@@ -1083,6 +1237,80 @@ def control_i2p():
         return jsonify({"success": False, "error": "Invalid action"}), 400
 
     return jsonify({"success": result.returncode == 0})
+
+
+@dashboard_bp.route('/ethernet', methods=['GET'])
+def get_ethernet_status():
+    """Get ethernet (eth0) status including IP, link state, and NAT info."""
+    status = {
+        "success": True,
+        "connected": False,
+        "ip_address": None,
+        "gateway": None,
+        "link_speed": None,
+        "nat_enabled": False,
+    }
+
+    try:
+        # Check link state
+        result = subprocess.run(
+            ["ip", "link", "show", "eth0"],
+            capture_output=True, text=True, timeout=5
+        )
+        if "state UP" in result.stdout:
+            status["connected"] = True
+
+            # Get IP address
+            result = subprocess.run(
+                ["ip", "-4", "addr", "show", "eth0"],
+                capture_output=True, text=True, timeout=5
+            )
+            # Parse: inet 192.168.8.191/24 brd 192.168.8.255 scope global dynamic eth0
+            for line in result.stdout.split('\n'):
+                if 'inet ' in line:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        status["ip_address"] = parts[1].split('/')[0]
+                    break
+
+            # Get default gateway
+            result = subprocess.run(
+                ["ip", "route", "show", "default"],
+                capture_output=True, text=True, timeout=5
+            )
+            # Parse: default via 192.168.8.1 dev eth0
+            for line in result.stdout.split('\n'):
+                if 'default via' in line and 'eth0' in line:
+                    parts = line.split()
+                    if 'via' in parts:
+                        idx = parts.index('via')
+                        if idx + 1 < len(parts):
+                            status["gateway"] = parts[idx + 1]
+                    break
+
+            # Get link speed
+            result = subprocess.run(
+                ["ethtool", "eth0"],
+                capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.split('\n'):
+                if 'Speed:' in line:
+                    status["link_speed"] = line.split(':')[1].strip()
+                    break
+
+        # Check if NAT masquerading is enabled
+        result = subprocess.run(
+            ["iptables", "-t", "nat", "-L", "POSTROUTING", "-n"],
+            capture_output=True, text=True, timeout=5
+        )
+        if "MASQUERADE" in result.stdout and "eth0" in result.stdout:
+            status["nat_enabled"] = True
+
+    except Exception as e:
+        log.error(f"Ethernet status error: {e}")
+        status["error"] = str(e)
+
+    return jsonify(status)
 
 
 # ============================================================================

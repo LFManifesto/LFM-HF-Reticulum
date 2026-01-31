@@ -660,6 +660,34 @@
             </p>
         </div>
 
+        <!-- Ethernet Status -->
+        <div class="card">
+            <div class="card-title">Ethernet (Internet Backhaul)</div>
+            <div id="ethernet-status">
+                <div class="status-row">
+                    <span class="status-label">Connection</span>
+                    <span class="status-value" id="eth-connection">
+                        <span class="indicator indicator-pending"></span> Checking...
+                    </span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">IP Address</span>
+                    <span class="status-value" id="eth-ip">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Gateway</span>
+                    <span class="status-value" id="eth-gateway">--</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">NAT for WiFi</span>
+                    <span class="status-value" id="eth-nat">--</span>
+                </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
+                Connect ethernet for internet backhaul. WiFi clients will be NAT'd through eth0.
+            </p>
+        </div>
+
         <!-- Reticulum Status -->
         <div class="card">
             <div class="card-title">Reticulum Network</div>
@@ -1301,6 +1329,35 @@
             }
         }
 
+        // Ethernet status
+        async function fetchEthernetStatus() {
+            try {
+                const response = await apiFetch('/api/dashboard/ethernet');
+                const data = await response.json();
+
+                const connEl = document.getElementById('eth-connection');
+                const ipEl = document.getElementById('eth-ip');
+                const gwEl = document.getElementById('eth-gateway');
+                const natEl = document.getElementById('eth-nat');
+
+                if (data.connected) {
+                    connEl.innerHTML = `<span class="indicator indicator-active"></span> Connected${data.link_speed ? ' (' + data.link_speed + ')' : ''}`;
+                    ipEl.textContent = data.ip_address || '--';
+                    gwEl.textContent = data.gateway || '--';
+                    natEl.innerHTML = data.nat_enabled
+                        ? '<span style="color: var(--success);">Enabled</span>'
+                        : '<span style="color: var(--text-muted);">Disabled</span>';
+                } else {
+                    connEl.innerHTML = '<span class="indicator indicator-inactive"></span> Not connected';
+                    ipEl.textContent = '--';
+                    gwEl.textContent = '--';
+                    natEl.textContent = '--';
+                }
+            } catch (err) {
+                console.error('Ethernet status error:', err);
+            }
+        }
+
         // Attach mode change listeners
         document.querySelectorAll('input[name="operating-mode"]').forEach(radio => {
             radio.addEventListener('change', (e) => setOperatingMode(e.target.value));
@@ -1352,6 +1409,7 @@
             fetchOperatingMode();
             fetchTxGateStatus();
             fetchI2pStatus();
+            fetchEthernetStatus();
         }
 
         // Initial load
