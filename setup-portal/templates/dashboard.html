@@ -23,7 +23,6 @@
             --danger: #f87171;
             --info: #38bdf8;
             --border: #2a2a2a;
-            --js8-color: #22d3ee;
             --beacon-color: #c92a2a;
         }
 
@@ -270,7 +269,6 @@
         }
 
         .stat-box.beacon .stat-value { color: var(--beacon-color); }
-        .stat-box.js8 .stat-value { color: var(--js8-color); }
 
         /* RX Level mini chart */
         .rx-mini {
@@ -303,6 +301,48 @@
         .band-item.good { background: rgba(56, 189, 248, 0.2); color: var(--info); }
         .band-item.fair { background: rgba(251, 191, 36, 0.2); color: var(--warning); }
         .band-item.poor { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
+        .band-item.unknown { background: var(--bg-tertiary); color: var(--text-muted); }
+
+        /* Solar data */
+        .solar-source {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .solar-indices {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.2rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.7rem;
+        }
+
+        .solar-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.15rem 0.3rem;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+        }
+
+        .solar-bands {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .solar-band {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.2rem 0.4rem;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            font-size: 0.7rem;
+        }
+
+        .solar-band.good { background: rgba(74, 222, 128, 0.2); color: var(--success); }
+        .solar-band.fair { background: rgba(251, 191, 36, 0.2); color: var(--warning); }
+        .solar-band.poor { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
 
         /* Scheduler controls */
         .scheduler-status {
@@ -349,7 +389,6 @@
         .btn:hover { background: var(--border); }
         .btn-primary { background: var(--accent); border-color: var(--accent); }
         .btn-primary:hover { background: var(--accent-dim); }
-        .btn-js8 { background: var(--js8-color); border-color: var(--js8-color); color: #000; }
         .btn-sm { padding: 0.2rem 0.4rem; font-size: 0.65rem; }
 
         /* Activity feed */
@@ -375,7 +414,6 @@
             color: var(--text-primary);
             border-bottom-color: var(--accent);
         }
-        .feed-tab.active.js8 { border-bottom-color: var(--js8-color); }
 
         .feed-content {
             flex: 1;
@@ -402,7 +440,6 @@
         }
 
         .feed-callsign.beacon { color: var(--beacon-color); }
-        .feed-callsign.js8 { color: var(--js8-color); }
 
         .feed-time {
             color: var(--text-muted);
@@ -449,8 +486,6 @@
         }
 
         .source-badge.beacon { background: var(--beacon-color); }
-        .source-badge.js8 { background: var(--js8-color); color: #000; }
-        .source-badge.both { background: linear-gradient(90deg, var(--beacon-color), var(--js8-color)); }
 
         /* Integration cards */
         .integration-row {
@@ -604,10 +639,6 @@
                     <span>Beacon</span>
                 </div>
                 <div class="status-indicator">
-                    <span class="status-dot" id="js8-status-dot"></span>
-                    <span>JS8Call</span>
-                </div>
-                <div class="status-indicator">
                     <span class="status-dot" id="modem-status-dot"></span>
                     <span>Modem</span>
                 </div>
@@ -650,10 +681,6 @@
                                 <div class="stat-value" id="beacon-count">0</div>
                                 <div class="stat-label">Beacon</div>
                             </div>
-                            <div class="stat-box js8">
-                                <div class="stat-value" id="js8-count">0</div>
-                                <div class="stat-label">JS8Call</div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -672,22 +699,43 @@
                     </div>
                 </div>
 
-                <!-- Band Conditions -->
+                <!-- Solar Data / Propagation -->
                 <div class="card">
                     <div class="card-header">
-                        <h3>Band Conditions</h3>
+                        <h3>Solar / Propagation</h3>
+                        <span class="solar-source" id="solar-source">N0NBH</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="solar-indices" id="solar-indices">
+                            <div class="solar-row"><span>SFI</span><span>--</span></div>
+                            <div class="solar-row"><span>A-Index</span><span>--</span></div>
+                            <div class="solar-row"><span>K-Index</span><span>--</span></div>
+                        </div>
+                        <div class="solar-bands" id="solar-bands">
+                            <div class="solar-band"><span>80m-40m</span><span>--</span></div>
+                            <div class="solar-band"><span>30m-20m</span><span>--</span></div>
+                            <div class="solar-band"><span>17m-15m</span><span>--</span></div>
+                            <div class="solar-band"><span>12m-10m</span><span>--</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Local Band Activity -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Local Activity</h3>
                     </div>
                     <div class="card-body">
                         <div class="band-grid" id="band-grid">
-                            <div class="band-item">160m</div>
-                            <div class="band-item">80m</div>
-                            <div class="band-item">40m</div>
-                            <div class="band-item">30m</div>
-                            <div class="band-item">20m</div>
-                            <div class="band-item">17m</div>
-                            <div class="band-item">15m</div>
-                            <div class="band-item">12m</div>
-                            <div class="band-item">10m</div>
+                            <div class="band-item unknown">160m</div>
+                            <div class="band-item unknown">80m</div>
+                            <div class="band-item unknown">40m</div>
+                            <div class="band-item unknown">30m</div>
+                            <div class="band-item unknown">20m</div>
+                            <div class="band-item unknown">17m</div>
+                            <div class="band-item unknown">15m</div>
+                            <div class="band-item unknown">12m</div>
+                            <div class="band-item unknown">10m</div>
                         </div>
                     </div>
                 </div>
@@ -710,62 +758,6 @@
                     </div>
                 </div>
 
-                <!-- JS8Call -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>JS8Call</h3>
-                        <span class="status-dot" id="js8-card-status"></span>
-                    </div>
-                    <div class="card-body">
-                        <div class="integration-row">
-                            <label>Connect</label>
-                            <label class="toggle">
-                                <input type="checkbox" id="js8-enabled" onchange="toggleJS8()">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="integration-row">
-                            <label>Host</label>
-                            <input type="text" class="integration-input" id="js8-host" value="127.0.0.1" style="width:80px">
-                        </div>
-                        <div class="integration-row">
-                            <label>Port</label>
-                            <input type="number" class="integration-input" id="js8-port" value="2442" style="width:60px">
-                        </div>
-                        <div class="control-btns" style="margin-top:0.5rem">
-                            <button class="btn btn-js8 btn-sm" onclick="js8SendHB()">Send HB</button>
-                            <button class="btn btn-sm" onclick="js8SendCQ()">CQ</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- TAK -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>TAK Integration</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="integration-row">
-                            <label>Enable</label>
-                            <label class="toggle">
-                                <input type="checkbox" id="tak-enabled" onchange="updateTakConfig()">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="integration-row">
-                            <label>Host</label>
-                            <input type="text" class="integration-input" id="tak-host" placeholder="192.168.1.x" style="width:100px">
-                        </div>
-                        <div class="integration-row">
-                            <label>Port</label>
-                            <input type="number" class="integration-input" id="tak-port" value="8087" style="width:60px">
-                        </div>
-                        <div class="control-btns" style="margin-top:0.5rem">
-                            <button class="btn btn-sm" onclick="takPushAll()">Push All</button>
-                            <button class="btn btn-sm" onclick="takTest()">Test</button>
-                        </div>
-                    </div>
-                </div>
             </aside>
 
             <!-- Center - Map -->
@@ -775,10 +767,6 @@
                     <div class="legend-item">
                         <span class="legend-dot" style="background:var(--beacon-color)"></span>
                         <span>Beacon</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-dot" style="background:var(--js8-color)"></span>
-                        <span>JS8Call</span>
                     </div>
                     <div class="legend-item">
                         <span class="legend-dot" style="background:var(--success)"></span>
@@ -803,7 +791,6 @@
                 <div class="feed-tabs">
                     <button class="feed-tab active" onclick="showFeed('all')">All</button>
                     <button class="feed-tab" onclick="showFeed('beacon')">Beacon</button>
-                    <button class="feed-tab js8" onclick="showFeed('js8')">JS8Call</button>
                     <button class="feed-tab" onclick="showFeed('messages')">Messages</button>
                 </div>
                 <div class="feed-content" id="feed-content">
@@ -840,7 +827,6 @@
         let rxChart = null;
         let currentFeed = 'all';
         let beaconPeers = [];
-        let js8Stations = [];
         let allActivity = [];
 
         // Initialize
@@ -901,12 +887,11 @@
             await Promise.all([
                 fetchHealth(),
                 fetchBeaconPeers(),
-                fetchJS8Stations(),
                 fetchRxHistory(),
                 fetchBandConditions(),
+                fetchSolarData(),
                 fetchSchedulerStatus(),
                 fetchModemStatus(),
-                fetchJS8Status(),
             ]);
             updateMap();
             updateStationTable();
@@ -962,33 +947,6 @@
             }
         }
 
-        // JS8Call stations
-        async function fetchJS8Stations() {
-            try {
-                const res = await fetch('/api/js8call/stations');
-                const data = await res.json();
-                js8Stations = data.stations || [];
-                document.getElementById('js8-count').textContent = js8Stations.length;
-
-                // Add to activity
-                js8Stations.forEach(s => {
-                    if (!allActivity.find(a => a.id === 'js8-' + s.callsign)) {
-                        allActivity.unshift({
-                            id: 'js8-' + s.callsign,
-                            type: 'js8',
-                            callsign: s.callsign,
-                            grid: s.grid,
-                            snr: s.snr,
-                            time: s.last_seen,
-                            detail: `Grid: ${s.grid || 'Unknown'} | SNR: ${s.snr} dB | ${s.frequency_khz?.toFixed(1)} kHz`
-                        });
-                    }
-                });
-            } catch (e) {
-                console.error('JS8 fetch error:', e);
-            }
-        }
-
         // RX history
         async function fetchRxHistory() {
             try {
@@ -1010,7 +968,7 @@
             }
         }
 
-        // Band conditions
+        // Band conditions (local peer data)
         async function fetchBandConditions() {
             try {
                 const res = await fetch('/api/dashboard/band-conditions');
@@ -1023,6 +981,53 @@
                 ).join('');
             } catch (e) {
                 console.error('Band conditions error:', e);
+            }
+        }
+
+        // Solar data (N0NBH)
+        async function fetchSolarData() {
+            try {
+                const res = await fetch('/api/dashboard/solar');
+                const data = await res.json();
+
+                if (!data.success) return;
+
+                // Update solar indices display
+                const solarEl = document.getElementById('solar-indices');
+                if (solarEl) {
+                    solarEl.innerHTML = `
+                        <div class="solar-row"><span>SFI</span><span>${data.solarflux || '--'}</span></div>
+                        <div class="solar-row"><span>Sunspots</span><span>${data.sunspots || '--'}</span></div>
+                        <div class="solar-row"><span>A-Index</span><span>${data.aindex || '--'}</span></div>
+                        <div class="solar-row"><span>K-Index</span><span>${data.kindex || '--'}</span></div>
+                        <div class="solar-row"><span>X-Ray</span><span>${data.xray || '--'}</span></div>
+                        <div class="solar-row"><span>Geomag</span><span>${data.geomagfield || '--'}</span></div>
+                        <div class="solar-row"><span>Noise</span><span>${data.signalnoise || '--'}</span></div>
+                    `;
+                }
+
+                // Update band conditions from solar data
+                const solarBandsEl = document.getElementById('solar-bands');
+                if (solarBandsEl && data.bands) {
+                    const isDay = new Date().getHours() >= 6 && new Date().getHours() < 18;
+                    const timeKey = isDay ? 'day' : 'night';
+
+                    let html = '';
+                    for (const [band, times] of Object.entries(data.bands)) {
+                        const condition = times[timeKey] || 'Unknown';
+                        const condClass = condition.toLowerCase();
+                        html += `<div class="solar-band ${condClass}"><span>${band}</span><span>${condition}</span></div>`;
+                    }
+                    solarBandsEl.innerHTML = html;
+                }
+
+                // Update source timestamp
+                const srcEl = document.getElementById('solar-source');
+                if (srcEl) {
+                    srcEl.textContent = data.updated || 'N0NBH';
+                }
+            } catch (e) {
+                console.error('Solar data error:', e);
             }
         }
 
@@ -1067,25 +1072,6 @@
             }
         }
 
-        // JS8 status
-        async function fetchJS8Status() {
-            try {
-                const res = await fetch('/api/js8call/status');
-                const data = await res.json();
-
-                const dot = document.getElementById('js8-status-dot');
-                const cardDot = document.getElementById('js8-card-status');
-                const connected = data.connected || false;
-
-                dot.className = 'status-dot ' + (connected ? 'online' : 'offline');
-                cardDot.className = 'status-dot ' + (connected ? 'online' : 'offline');
-
-                document.getElementById('js8-enabled').checked = connected;
-            } catch (e) {
-                document.getElementById('js8-status-dot').className = 'status-dot offline';
-            }
-        }
-
         // Update map with all stations
         function updateMap() {
             // Clear old markers
@@ -1119,31 +1105,6 @@
                 }
             });
 
-            // Add JS8 stations
-            js8Stations.forEach(s => {
-                if (s.lat && s.lon) {
-                    const color = getSignalColor(s.snr);
-                    const marker = L.circleMarker([s.lat, s.lon], {
-                        radius: 8,
-                        fillColor: '#22d3ee',
-                        color: color,
-                        weight: 3,
-                        fillOpacity: 0.8
-                    }).addTo(map);
-
-                    marker.bindPopup(`
-                        <b>${s.callsign}</b><br>
-                        <span style="color:#22d3ee">JS8Call</span><br>
-                        Grid: ${s.grid}<br>
-                        SNR: ${s.snr} dB<br>
-                        Freq: ${s.frequency_khz?.toFixed(1)} kHz
-                    `);
-
-                    markers['js8-' + s.callsign] = marker;
-                    count++;
-                }
-            });
-
             document.getElementById('map-station-count').textContent = count;
 
             // Fit bounds if we have markers
@@ -1169,16 +1130,7 @@
                 call: p.callsign || p.identity_short,
                 grid: p.grid,
                 snr: p.rx_level_db,
-                source: 'beacon',
                 time: p.last_seen
-            }));
-
-            js8Stations.forEach(s => allStations.push({
-                call: s.callsign,
-                grid: s.grid,
-                snr: s.snr,
-                source: 'js8',
-                time: s.last_seen
             }));
 
             // Sort by most recent
@@ -1188,8 +1140,7 @@
                 <tr>
                     <td>${s.call}</td>
                     <td>${s.grid || '--'}</td>
-                    <td>${s.snr?.toFixed?.(0) || s.snr || '--'}</td>
-                    <td><span class="source-badge ${s.source}">${s.source === 'beacon' ? 'BCN' : 'JS8'}</span></td>
+                    <td>${s.snr?.toFixed?.(0) || s.snr || '--'} dB</td>
                 </tr>
             `).join('');
         }
@@ -1201,8 +1152,6 @@
 
             if (currentFeed === 'beacon') {
                 items = items.filter(a => a.type === 'beacon');
-            } else if (currentFeed === 'js8') {
-                items = items.filter(a => a.type === 'js8');
             } else if (currentFeed === 'messages') {
                 items = items.filter(a => a.type === 'message');
             }
@@ -1275,88 +1224,6 @@
             }
         }
 
-        // JS8Call controls
-        async function toggleJS8() {
-            const enabled = document.getElementById('js8-enabled').checked;
-            const host = document.getElementById('js8-host').value;
-            const port = parseInt(document.getElementById('js8-port').value);
-
-            try {
-                if (enabled) {
-                    await fetch('/api/js8call/connect', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({host, port})
-                    });
-                } else {
-                    await fetch('/api/js8call/disconnect', {method: 'POST'});
-                }
-                setTimeout(fetchJS8Status, 1000);
-            } catch (e) {
-                console.error('JS8 toggle error:', e);
-            }
-        }
-
-        async function js8SendHB() {
-            try {
-                await fetch('/api/js8call/send', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({type: 'heartbeat'})
-                });
-            } catch (e) {
-                console.error('JS8 HB error:', e);
-            }
-        }
-
-        async function js8SendCQ() {
-            try {
-                await fetch('/api/js8call/send', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({type: 'cq'})
-                });
-            } catch (e) {
-                console.error('JS8 CQ error:', e);
-            }
-        }
-
-        // TAK controls
-        async function updateTakConfig() {
-            const enabled = document.getElementById('tak-enabled').checked;
-            const host = document.getElementById('tak-host').value;
-            const port = parseInt(document.getElementById('tak-port').value);
-
-            try {
-                await fetch('/api/dashboard/tak/config', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({enabled, host, port, protocol: 'udp'})
-                });
-            } catch (e) {
-                console.error('TAK config error:', e);
-            }
-        }
-
-        async function takPushAll() {
-            try {
-                const res = await fetch('/api/dashboard/tak/push', {method: 'POST'});
-                const data = await res.json();
-                alert(`Pushed ${data.pushed} stations to TAK`);
-            } catch (e) {
-                console.error('TAK push error:', e);
-            }
-        }
-
-        async function takTest() {
-            try {
-                const res = await fetch('/api/dashboard/tak/test', {method: 'POST'});
-                const data = await res.json();
-                alert(data.message || data.error);
-            } catch (e) {
-                console.error('TAK test error:', e);
-            }
-        }
     </script>
 </body>
 </html>

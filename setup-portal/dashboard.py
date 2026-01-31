@@ -7,7 +7,7 @@ Provides API endpoints for the enhanced dashboard:
 - RX level history
 - Interface status
 - Network health metrics
-- TAK CoT integration
+- Solar/propagation data (N0NBH)
 """
 
 import json
@@ -76,12 +76,6 @@ class DashboardState:
 
         # Operating mode: hybrid (default), hf_only, internet_only
         self.operating_mode = "hybrid"
-
-        # TAK settings
-        self.tak_enabled = False
-        self.tak_host = ""
-        self.tak_port = 8087
-        self.tak_protocol = "udp"
 
     def add_rx_reading(self, level_db: float, mode: str = ""):
         """Add RX level reading to history."""
@@ -685,118 +679,6 @@ def get_band_conditions() -> List[Dict]:
 
 
 # ============================================================================
-# TAK CoT Integration
-# ============================================================================
-
-def generate_cot_event(peer: Dict, stale_minutes: int = 60) -> str:
-    """
-    Generate Cursor on Target (CoT) XML for a beacon peer.
-
-    TAK uses CoT events to display markers on the map.
-    """
-    now = datetime.utcnow()
-    stale = datetime.utcfromtimestamp(time.time() + stale_minutes * 60)
-
-    # Get lat/lon from grid
-    lat, lon = 0.0, 0.0
-    if peer.get("grid"):
-        coords = grid_to_latlon(peer["grid"])
-        if coords:
-            lat, lon = coords
-
-    # CoT type: a-f-G-U-C (atom, friend, ground, unit, combat)
-    # For ham radio, we'll use a-f-G-E-S (atom, friend, ground, equipment, sensor)
-    cot_type = "a-f-G-E-S"
-
-    # Unique ID
-    uid = f"reticulumhf-{peer['identity_short']}"
-
-    # Build XML
-    event = ET.Element("event")
-    event.set("version", "2.0")
-    event.set("type", cot_type)
-    event.set("uid", uid)
-    event.set("how", "m-g")  # machine-generated
-    event.set("time", now.strftime("%Y-%m-%dT%H:%M:%SZ"))
-    event.set("start", now.strftime("%Y-%m-%dT%H:%M:%SZ"))
-    event.set("stale", stale.strftime("%Y-%m-%dT%H:%M:%SZ"))
-
-    # Point (location)
-    point = ET.SubElement(event, "point")
-    point.set("lat", str(lat))
-    point.set("lon", str(lon))
-    point.set("hae", "0")  # height above ellipsoid
-    point.set("ce", "5000")  # circular error (meters) - grid square accuracy
-    point.set("le", "9999999")  # linear error
-
-    # Detail
-    detail = ET.SubElement(event, "detail")
-
-    # Contact info
-    contact = ET.SubElement(detail, "contact")
-    callsign = peer.get("callsign", peer["identity_short"])
-    contact.set("callsign", callsign)
-
-    # Remarks
-    remarks = ET.SubElement(detail, "remarks")
-    remarks_text = f"ReticulumHF Beacon\n"
-    remarks_text += f"Grid: {peer.get('grid', 'Unknown')}\n"
-    remarks_text += f"RX: {peer.get('rx_level_db', -99):.1f} dB\n"
-    remarks_text += f"Count: {peer.get('rx_count', 0)}\n"
-    remarks_text += f"Interface: {peer.get('interface', 'HF')}\n"
-    remarks_text += f"ID: {peer.get('identity', '')[:32]}"
-    remarks.text = remarks_text
-
-    # Custom fields
-    reticulumhf = ET.SubElement(detail, "reticulumhf")
-    reticulumhf.set("identity", peer.get("identity", ""))
-    reticulumhf.set("grid", peer.get("grid", ""))
-    reticulumhf.set("rx_db", str(peer.get("rx_level_db", -99)))
-    reticulumhf.set("rx_count", str(peer.get("rx_count", 0)))
-    reticulumhf.set("is_prop_node", str(peer.get("is_prop_node", False)).lower())
-
-    return ET.tostring(event, encoding="unicode")
-
-
-def push_to_tak(peer: Dict) -> bool:
-    """Push a peer as CoT event to TAK server."""
-    if not state.tak_enabled or not state.tak_host:
-        return False
-
-    try:
-        cot_xml = generate_cot_event(peer)
-
-        if state.tak_protocol == "udp":
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                sock.sendto(cot_xml.encode('utf-8'), (state.tak_host, state.tak_port))
-        else:  # TCP
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(5)
-                sock.connect((state.tak_host, state.tak_port))
-                sock.send(cot_xml.encode('utf-8'))
-
-        log.debug(f"Pushed {peer.get('callsign', peer['identity_short'])} to TAK")
-        return True
-
-    except Exception as e:
-        log.error(f"TAK push failed: {e}")
-        return False
-
-
-def push_all_peers_to_tak() -> int:
-    """Push all current peers to TAK server."""
-    if not state.tak_enabled:
-        return 0
-
-    count = 0
-    for peer in state.get_peers(max_age_hours=2):
-        if push_to_tak(peer):
-            count += 1
-
-    return count
-
-
-# ============================================================================
 # Flask API Routes
 # ============================================================================
 
@@ -836,20 +718,6 @@ def api_add_peer():
         frequency_khz=data.get('frequency_khz', 0),
         flags=data.get('flags', 0)
     )
-
-    # Push to TAK if enabled
-    if state.tak_enabled:
-        peer_dict = {
-            "identity": peer.identity,
-            "identity_short": peer.identity[:16],
-            "callsign": peer.callsign,
-            "grid": peer.grid,
-            "rx_level_db": peer.rx_level_db,
-            "rx_count": peer.rx_count,
-            "interface": peer.interface,
-            "is_prop_node": bool(peer.flags & 0x02),
-        }
-        push_to_tak(peer_dict)
 
     return jsonify({"status": "ok", "rx_count": peer.rx_count})
 
@@ -907,90 +775,110 @@ def api_get_band_conditions():
     })
 
 
-@dashboard_bp.route('/tak/config', methods=['GET'])
-def api_get_tak_config():
-    """Get TAK integration configuration."""
-    return jsonify({
-        "enabled": state.tak_enabled,
-        "host": state.tak_host,
-        "port": state.tak_port,
-        "protocol": state.tak_protocol
-    })
+# Solar data cache
+_solar_cache = {"data": None, "timestamp": 0, "ttl": 300}  # 5 minute cache
 
 
-@dashboard_bp.route('/tak/config', methods=['POST'])
-def api_set_tak_config():
-    """Set TAK integration configuration."""
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
+@dashboard_bp.route('/solar', methods=['GET'])
+def api_get_solar_data():
+    """
+    Get solar/propagation data from N0NBH.
 
-    state.tak_enabled = bool(data.get('enabled', False))
-    state.tak_host = str(data.get('host', ''))
+    Returns comprehensive solar indices and HF band conditions.
+    Data is cached for 5 minutes to avoid hammering the API.
+    """
+    global _solar_cache
 
-    # Validate port
+    # Return cached data if fresh
+    if _solar_cache["data"] and (time.time() - _solar_cache["timestamp"]) < _solar_cache["ttl"]:
+        cached = _solar_cache["data"].copy()
+        cached["cached"] = True
+        return jsonify(cached)
+
     try:
-        port = int(data.get('port', 8087))
-        if not 1 <= port <= 65535:
-            return jsonify({"error": "Port must be 1-65535"}), 400
-        state.tak_port = port
-    except (TypeError, ValueError):
-        return jsonify({"error": "Invalid port number"}), 400
+        import urllib.request
+        import xml.etree.ElementTree as XMLParser
 
-    protocol = data.get('protocol', 'udp')
-    if protocol not in ('udp', 'tcp'):
-        return jsonify({"error": "Protocol must be 'udp' or 'tcp'"}), 400
-    state.tak_protocol = protocol
+        url = "https://www.hamqsl.com/solarxml.php"
+        req = urllib.request.Request(url, headers={'User-Agent': 'ReticulumHF/0.3'})
 
-    # Persist to config file
-    config_path = Path("/etc/reticulumhf/tak.json")
-    try:
-        config_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(config_path, "w") as f:
-            json.dump({
-                "enabled": state.tak_enabled,
-                "host": state.tak_host,
-                "port": state.tak_port,
-                "protocol": state.tak_protocol,
-            }, f, indent=2)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            xml_data = response.read().decode('utf-8')
+
+        # Parse XML
+        root = XMLParser.fromstring(xml_data)
+        solar = root.find('solardata')
+
+        if solar is None:
+            return jsonify({"success": False, "error": "Invalid XML response"})
+
+        # Extract all solar indices
+        def get_text(tag, default=""):
+            el = solar.find(tag)
+            return el.text.strip() if el is not None and el.text else default
+
+        def get_int(tag, default=0):
+            try:
+                return int(get_text(tag, str(default)))
+            except ValueError:
+                return default
+
+        def get_float(tag, default=0.0):
+            try:
+                return float(get_text(tag, str(default)))
+            except ValueError:
+                return default
+
+        result = {
+            "success": True,
+            "updated": get_text("updated"),
+            "source": "N0NBH",
+
+            # Solar indices
+            "solarflux": get_int("solarflux"),
+            "sunspots": get_int("sunspots"),
+            "aindex": get_int("aindex"),
+            "kindex": get_int("kindex"),
+            "xray": get_text("xray"),
+            "protonflux": get_int("protonflux"),
+            "electronflux": get_int("electonflux"),  # Note: typo in XML
+            "aurora": get_int("aurora"),
+            "solarwind": get_float("solarwind"),
+            "magneticfield": get_float("magneticfield"),
+            "geomagfield": get_text("geomagfield"),
+            "signalnoise": get_text("signalnoise"),
+
+            # Band conditions (day and night)
+            "bands": {}
+        }
+
+        # Parse band conditions
+        calc = solar.find('calculatedconditions')
+        if calc is not None:
+            for band in calc.findall('band'):
+                name = band.get('name', '')
+                time_of_day = band.get('time', '')
+                condition = band.text.strip() if band.text else 'Unknown'
+
+                if name not in result["bands"]:
+                    result["bands"][name] = {}
+                result["bands"][name][time_of_day] = condition
+
+        # Cache result
+        _solar_cache["data"] = result
+        _solar_cache["timestamp"] = time.time()
+
+        return jsonify(result)
+
     except Exception as e:
-        log.warning(f"Failed to persist TAK config: {e}")
-
-    return jsonify({"status": "ok"})
-
-
-@dashboard_bp.route('/tak/push', methods=['POST'])
-def api_tak_push():
-    """Push all peers to TAK server."""
-    count = push_all_peers_to_tak()
-    return jsonify({
-        "status": "ok",
-        "pushed": count
-    })
-
-
-@dashboard_bp.route('/tak/test', methods=['POST'])
-def api_tak_test():
-    """Send test CoT event to TAK server."""
-    if not state.tak_enabled or not state.tak_host:
-        return jsonify({"error": "TAK not configured"}), 400
-
-    # Create test peer
-    test_peer = {
-        "identity": "0" * 32,
-        "identity_short": "0" * 16,
-        "callsign": "TEST-RETICULUMHF",
-        "grid": request.args.get('grid', 'FM29'),
-        "rx_level_db": -15,
-        "rx_count": 1,
-        "interface": "TEST",
-        "is_prop_node": False,
-    }
-
-    if push_to_tak(test_peer):
-        return jsonify({"status": "ok", "message": "Test event sent"})
-    else:
-        return jsonify({"error": "Failed to send test event"}), 500
+        log.error(f"Solar data fetch error: {e}")
+        # Return stale cache if available
+        if _solar_cache["data"]:
+            cached = _solar_cache["data"].copy()
+            cached["cached"] = True
+            cached["cache_error"] = str(e)
+            return jsonify(cached)
+        return jsonify({"success": False, "error": str(e)})
 
 
 @dashboard_bp.route('/grid/convert', methods=['GET'])
