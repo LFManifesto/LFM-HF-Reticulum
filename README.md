@@ -1,10 +1,10 @@
 # ReticulumHF
 
-**v0.4.0-alpha** - Reticulum mesh networking over HF radio using FreeDV data modes.
+**v0.4.0-alpha** - Reticulum networking over HF radio using FreeDV data modes.
 
 ## What This Is
 
-A Raspberry Pi image that creates a WiFi gateway for [Reticulum](https://reticulum.network) mesh networking over HF radio. Connect Sideband, MeshChat, or NomadNet to the Pi's WiFi, and it bridges your traffic to HF using [FreeDV](https://freedv.org) digital modes.
+A Raspberry Pi image that creates a WiFi gateway for [Reticulum](https://reticulum.network) mesh networking over HF radio. Connect Sideband or Meshchat to the Pi's WiFi, and it bridges your traffic to HF using [FreeDV](https://freedv.org) digital modes. You can also ssh into the pi and use Nomadnet. 
 
 ## Technical Specifications
 
