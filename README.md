@@ -1,7 +1,3 @@
-# ReticulumHF
-
-**v0.3.0-alpha** - Reticulum over HF radio using FreeDV.
-
 ## Overview
 
 Runs Reticulum over HF radio using FreeDV data modes. Provides encrypted peer-to-peer communication without internet infrastructure.
