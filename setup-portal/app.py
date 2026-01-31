@@ -241,11 +241,22 @@ def generate_reticulum_config(radio_id: str, serial_port: str, audio_card: int,
     if ifac_pass:
         config_lines.append(f"    passphrase = {ifac_pass}")
 
-    # I2P Interface - full transport for internet connectivity
+    # Pi's local I2P interface - this Pi's I2P node
     config_lines.extend([
         "",
-        "  # I2P transport - connects to Lightfighter Reticulum network",
-        "  # Handles announcements and bulk traffic over internet",
+        "  # Pi's local I2P interface",
+        "  # This creates the Pi's own I2P tunnel for incoming connections",
+        "  [[Local I2P]]",
+        "    type = I2PInterface",
+        f"    enabled = {'yes' if i2p_enabled else 'no'}",
+        "    connectable = yes",
+    ])
+
+    # Lightfighter I2P peer - connects to the Lightfighter network
+    config_lines.extend([
+        "",
+        "  # Lightfighter Reticulum network peer",
+        "  # Connects to the established I2P node for announcements and routing",
         "  [[Lightfighter I2P]]",
         "    type = I2PInterface",
         f"    enabled = {'yes' if i2p_enabled else 'no'}",
@@ -770,6 +781,46 @@ def api_modem_levels():
     return jsonify(levels)
 
 
+@app.route("/api/tune", methods=["POST"])
+def api_tune():
+    """
+    Send a tune tone for antenna/ALC adjustment.
+
+    Sends a 5-second steady tone via freedvtnc2.
+    Duration can be overridden (1-30 seconds).
+    """
+    data = request.get_json() or {}
+    duration = min(max(int(data.get("duration", 5)), 1), 30)
+
+    # Send TUNE command to freedvtnc2
+    success, response = freedvtnc2_command(f"TUNE {duration}")
+    if not success:
+        # Fallback: try PTT TEST command if TUNE not supported
+        success, response = freedvtnc2_command(f"PTT TEST {duration}")
+
+    if success:
+        return jsonify({
+            "success": True,
+            "duration": duration,
+            "message": f"Transmitting tune tone for {duration} seconds"
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "error": response
+        }), 400
+
+
+@app.route("/api/tune/stop", methods=["POST"])
+def api_tune_stop():
+    """Emergency stop tune tone."""
+    success, response = freedvtnc2_command("PTT OFF")
+    return jsonify({
+        "success": success,
+        "message": "Tune stopped" if success else response
+    })
+
+
 @app.route("/api/beacon/status")
 def api_beacon_status():
     """Get beacon scheduler status."""
@@ -1150,9 +1201,11 @@ RETICULUMHF_AP_PASS={wifi_password}
 
         beacon_config = {
             "operating_mode": operating_mode,
-            "beacon_minutes": [0, 30],
-            "beacon_duration_sec": 60,
-            "beacon_tx_delay_sec": 5,
+            # Beacon every 6 hours at 00:00, 06:00, 12:00, 18:00 UTC
+            "beacon_hours_utc": [0, 6, 12, 18],
+            "beacon_minute": 0,  # Minute within the hour to beacon
+            "beacon_duration_sec": 120,  # 2 minutes per beacon window
+            "beacon_tx_delay_sec": 10,  # Listen 10 seconds before TX
             "beacon_mode": "DATAC4",
             "arq_mode": freedv_mode,
             "freedvtnc2_cmd_host": "127.0.0.1",
@@ -1166,7 +1219,13 @@ RETICULUMHF_AP_PASS={wifi_password}
             "adaptive_mode": False,
             "i2p_enabled": i2p_enabled,
             "i2p_peer": i2p_peer,
-            "dashboard_url": "http://127.0.0.1/api/dashboard/peers"
+            "dashboard_url": "http://127.0.0.1/api/dashboard/peers",
+            # Operating frequencies (kHz)
+            "frequencies": {
+                "40m": 7090,
+                "20m": 14090,
+                "10m": 28090
+            }
         }
         with open(beacon_config_path, "w") as f:
             json.dump(beacon_config, f, indent=2)

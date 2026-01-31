@@ -177,13 +177,33 @@ apt-get install -y \
     libhamlib-utils libhamlib-dev \
     hostapd dnsmasq \
     iptables \
-    fake-hwclock \
+    chrony \
     i2pd
 
-# Configure fake-hwclock to preserve time across reboots
-# This fixes the "wrong date on first boot" issue for Pi without RTC
-echo "[4.1/9] Configuring fake-hwclock..."
-systemctl enable fake-hwclock
+# Configure chrony for robust NTP time sync (required for beacon scheduling)
+echo "[4.1/9] Configuring chrony for NTP time sync..."
+cat > /etc/chrony/chrony.conf << 'CHRONY'
+# ReticulumHF chrony configuration
+# Multiple NTP pools for reliability
+
+pool pool.ntp.org iburst maxsources 4
+pool time.google.com iburst maxsources 2
+pool time.cloudflare.com iburst maxsources 2
+
+# Record the rate at which the system clock gains/losses time
+driftfile /var/lib/chrony/drift
+
+# Allow stepping the clock on first sync if offset > 1 second
+makestep 1 3
+
+# Enable kernel synchronization of the real-time clock (RTC)
+rtcsync
+
+# Log files
+logdir /var/log/chrony
+CHRONY
+
+systemctl enable chrony
 
 # Configure hostapd (WiFi AP)
 echo "[5/9] Configuring hostapd..."

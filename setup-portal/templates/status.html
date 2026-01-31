@@ -402,7 +402,7 @@
         <header>
             <h1>ReticulumHF Gateway</h1>
             <p class="subtitle" id="radio-config">Loading...</p>
-            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.3.4-alpha</p>
+            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.5.0-alpha</p>
             <nav style="margin-top: 12px; display: flex; gap: 8px; justify-content: center;">
                 <a href="/status" class="btn btn-sm" style="background: var(--accent);">Status</a>
                 <a href="/dashboard" class="btn btn-sm">Beacon Dashboard</a>
@@ -481,6 +481,21 @@
                 <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
                     If radio ALC meter is high or power fluctuates, reduce this value.
                 </p>
+            </div>
+
+            <!-- Tune Button -->
+            <div class="audio-monitor" style="margin-top: 12px;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">Tune Tone</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Transmit steady tone for antenna/ALC adjustment</div>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn" id="tune-btn" onclick="startTune()">Tune (5s)</button>
+                        <button class="btn btn-danger btn-small" id="tune-stop-btn" onclick="stopTune()" style="display: none;">Stop</button>
+                    </div>
+                </div>
+                <div id="tune-status" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;"></div>
             </div>
 
             <!-- Troubleshooting guidance -->
@@ -943,6 +958,72 @@
                 statusEl.textContent = 'Error: ' + err.message;
                 statusEl.style.color = 'var(--error)';
             }
+        }
+
+        // Tune button
+        let tuneTimeout = null;
+
+        async function startTune() {
+            const btn = document.getElementById('tune-btn');
+            const stopBtn = document.getElementById('tune-stop-btn');
+            const statusEl = document.getElementById('tune-status');
+
+            btn.disabled = true;
+            btn.textContent = 'Tuning...';
+            stopBtn.style.display = 'inline-flex';
+            statusEl.textContent = 'Transmitting tune tone...';
+            statusEl.style.color = 'var(--warning)';
+
+            try {
+                const response = await fetch('/api/tune', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({duration: 5})
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    statusEl.textContent = 'Tune complete - check ALC/power';
+                    statusEl.style.color = 'var(--success)';
+                } else {
+                    statusEl.textContent = 'Error: ' + (data.error || 'Failed');
+                    statusEl.style.color = 'var(--error)';
+                }
+            } catch (err) {
+                statusEl.textContent = 'Error: ' + err.message;
+                statusEl.style.color = 'var(--error)';
+            }
+
+            // Reset button after 5 seconds
+            tuneTimeout = setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = 'Tune (5s)';
+                stopBtn.style.display = 'none';
+            }, 5500);
+        }
+
+        async function stopTune() {
+            if (tuneTimeout) {
+                clearTimeout(tuneTimeout);
+                tuneTimeout = null;
+            }
+
+            const btn = document.getElementById('tune-btn');
+            const stopBtn = document.getElementById('tune-stop-btn');
+            const statusEl = document.getElementById('tune-status');
+
+            try {
+                await fetch('/api/tune/stop', { method: 'POST' });
+                statusEl.textContent = 'Tune stopped';
+                statusEl.style.color = 'var(--text-muted)';
+            } catch (err) {
+                statusEl.textContent = 'Stop failed: ' + err.message;
+                statusEl.style.color = 'var(--error)';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Tune (5s)';
+            stopBtn.style.display = 'none';
         }
 
         async function changeFreeDVMode() {

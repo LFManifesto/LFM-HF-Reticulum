@@ -82,10 +82,14 @@ class FreeDVMode(Enum):
 @dataclass
 class BeaconConfig:
     """Configuration for the beacon scheduler."""
-    # Beacon timing
-    beacon_minutes: List[int] = field(default_factory=lambda: [0, 30])  # Minutes past hour
-    beacon_duration_sec: int = 60       # How long to stay in beacon mode
-    beacon_tx_delay_sec: int = 5        # Delay before TX (listen first)
+    # Beacon timing - 6-hour intervals at 00:00, 06:00, 12:00, 18:00 UTC
+    beacon_hours_utc: List[int] = field(default_factory=lambda: [0, 6, 12, 18])
+    beacon_minute: int = 0              # Minute within hour to beacon
+    beacon_duration_sec: int = 120      # How long to stay in beacon mode (2 min)
+    beacon_tx_delay_sec: int = 10       # Delay before TX (listen first)
+
+    # Legacy support - if beacon_minutes is set, use that instead
+    beacon_minutes: List[int] = field(default_factory=list)
 
     # FreeDV modes
     beacon_mode: FreeDVMode = FreeDVMode.DATAC4
@@ -844,14 +848,25 @@ class BeaconScheduler:
     def _scheduler_loop(self) -> None:
         """Main scheduler loop."""
         while self.running and not self._stop_event.is_set():
-            now = datetime.now()
+            now = datetime.utcnow()  # Use UTC for consistent scheduling
 
             # Check if we're in a beacon window
-            in_beacon_window = (
-                self.config.auto_switch and
-                now.minute in self.config.beacon_minutes and
-                now.second < self.config.beacon_duration_sec
-            )
+            # Support both hour-based (6-hour intervals) and legacy minute-based
+            if self.config.beacon_minutes:
+                # Legacy: minute-based scheduling (every hour)
+                in_beacon_window = (
+                    self.config.auto_switch and
+                    now.minute in self.config.beacon_minutes and
+                    now.second < self.config.beacon_duration_sec
+                )
+            else:
+                # New: hour-based scheduling (e.g., every 6 hours)
+                in_beacon_window = (
+                    self.config.auto_switch and
+                    now.hour in self.config.beacon_hours_utc and
+                    now.minute == self.config.beacon_minute and
+                    now.second < self.config.beacon_duration_sec
+                )
 
             if in_beacon_window and self.current_mode != Mode.BEACON:
                 self._enter_beacon_mode()
@@ -994,25 +1009,39 @@ class BeaconScheduler:
 
     def get_status(self) -> Dict:
         """Get current scheduler status."""
-        now = datetime.now()
+        now = datetime.utcnow()
         next_beacon = None
 
         # Calculate next beacon window
-        for minute in sorted(self.config.beacon_minutes):
-            if minute > now.minute:
-                next_beacon = now.replace(minute=minute, second=0, microsecond=0)
-                break
-        if next_beacon is None:
-            # Next hour
-            next_beacon = now.replace(
-                minute=self.config.beacon_minutes[0],
-                second=0,
-                microsecond=0
-            )
-            next_beacon = next_beacon.replace(hour=(now.hour + 1) % 24)
+        if self.config.beacon_minutes:
+            # Legacy minute-based scheduling
+            for minute in sorted(self.config.beacon_minutes):
+                if minute > now.minute:
+                    next_beacon = now.replace(minute=minute, second=0, microsecond=0)
+                    break
+            if next_beacon is None:
+                next_beacon = now.replace(
+                    minute=self.config.beacon_minutes[0],
+                    second=0,
+                    microsecond=0
+                )
+                next_beacon = next_beacon.replace(hour=(now.hour + 1) % 24)
+        else:
+            # Hour-based scheduling (6-hour intervals)
+            for hour in sorted(self.config.beacon_hours_utc):
+                if hour > now.hour or (hour == now.hour and now.minute < self.config.beacon_minute):
+                    next_beacon = now.replace(hour=hour, minute=self.config.beacon_minute,
+                                             second=0, microsecond=0)
+                    break
+            if next_beacon is None:
+                # Wrap to next day
+                from datetime import timedelta
+                tomorrow = now + timedelta(days=1)
+                next_beacon = tomorrow.replace(hour=self.config.beacon_hours_utc[0],
+                                               minute=self.config.beacon_minute,
+                                               second=0, microsecond=0)
 
         tnc_status = self.tnc.get_status() or {}
-
         peers = self.peer_table.get_all()
 
         return {
@@ -1021,8 +1050,9 @@ class BeaconScheduler:
             'freedv_mode': tnc_status.get('mode', 'unknown'),
             'beacon_mode': self.config.beacon_mode.value,
             'arq_mode': self.config.arq_mode.value,
-            'next_beacon': next_beacon.isoformat() if next_beacon else None,
-            'beacon_minutes': self.config.beacon_minutes,
+            'next_beacon_utc': next_beacon.isoformat() + 'Z' if next_beacon else None,
+            'beacon_hours_utc': self.config.beacon_hours_utc,
+            'beacon_minutes': self.config.beacon_minutes,  # Legacy support
             'tx_enabled': self.config.tx_beacon,
             'adaptive_mode': self.config.adaptive_mode,
             'channel_clear': self.tnc.is_channel_clear(),

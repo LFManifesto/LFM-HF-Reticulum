@@ -901,6 +901,289 @@ def api_grid_convert():
         return jsonify({"error": "Provide 'grid' or 'lat' and 'lon'"}), 400
 
 
+# WSPR spots cache
+_wspr_cache = {"spots": [], "timestamp": 0, "ttl": 120}  # 2 minute cache
+
+
+@dashboard_bp.route('/wspr', methods=['GET'])
+def api_get_wspr_spots():
+    """
+    Get recent WSPR spots from WSPRnet.
+
+    Query params:
+    - band: filter by band (e.g., "40m", "20m", "10m")
+    - minutes: time window (default 15, max 60)
+    - limit: max spots to return (default 100)
+
+    Returns spots with grid squares for map plotting.
+    """
+    global _wspr_cache
+
+    band = request.args.get('band', '')
+    minutes = min(request.args.get('minutes', 15, type=int), 60)
+    limit = min(request.args.get('limit', 100, type=int), 500)
+
+    # Return cached data if fresh (unless band filter changed)
+    cache_key = f"{band}_{minutes}"
+    if (_wspr_cache.get("key") == cache_key and
+        _wspr_cache["spots"] and
+        (time.time() - _wspr_cache["timestamp"]) < _wspr_cache["ttl"]):
+        return jsonify({
+            "spots": _wspr_cache["spots"][:limit],
+            "count": len(_wspr_cache["spots"][:limit]),
+            "cached": True,
+            "timestamp": _wspr_cache["timestamp"]
+        })
+
+    try:
+        import urllib.request
+        import csv
+        from io import StringIO
+
+        # Map band names to frequencies for WSPRnet query
+        band_freqs = {
+            "160m": "1.8",
+            "80m": "3.5",
+            "40m": "7",
+            "30m": "10.1",
+            "20m": "14",
+            "17m": "18.1",
+            "15m": "21",
+            "12m": "24.9",
+            "10m": "28",
+        }
+
+        # Build WSPRnet URL
+        # Note: WSPRnet provides CSV download for recent spots
+        url = "https://wsprnet.org/olddb?mode=csv&type=activity"
+        if band and band in band_freqs:
+            url += f"&band={band_freqs[band]}"
+
+        req = urllib.request.Request(url, headers={'User-Agent': 'ReticulumHF/0.4'})
+
+        spots = []
+        with urllib.request.urlopen(req, timeout=15) as response:
+            content = response.read().decode('utf-8')
+            reader = csv.reader(StringIO(content))
+
+            # Skip header if present
+            headers = next(reader, None)
+            if headers and 'Timestamp' in str(headers):
+                pass  # Already skipped
+            elif headers:
+                # First row might be data, process it
+                try:
+                    spots.append(_parse_wspr_row(headers))
+                except Exception:
+                    pass
+
+            for row in reader:
+                try:
+                    spot = _parse_wspr_row(row)
+                    if spot:
+                        spots.append(spot)
+                    if len(spots) >= 500:  # Safety limit
+                        break
+                except Exception:
+                    continue
+
+        # Sort by timestamp (newest first) and limit
+        spots.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+
+        # Cache results
+        _wspr_cache["spots"] = spots
+        _wspr_cache["timestamp"] = time.time()
+        _wspr_cache["key"] = cache_key
+
+        return jsonify({
+            "spots": spots[:limit],
+            "count": len(spots[:limit]),
+            "cached": False,
+            "timestamp": time.time()
+        })
+
+    except Exception as e:
+        log.error(f"WSPR fetch error: {e}")
+        # Return stale cache if available
+        if _wspr_cache["spots"]:
+            return jsonify({
+                "spots": _wspr_cache["spots"][:limit],
+                "count": len(_wspr_cache["spots"][:limit]),
+                "cached": True,
+                "error": str(e),
+                "timestamp": _wspr_cache["timestamp"]
+            })
+        return jsonify({"success": False, "error": str(e), "spots": []})
+
+
+def _parse_wspr_row(row):
+    """Parse a WSPRnet CSV row into a spot dict."""
+    if len(row) < 10:
+        return None
+
+    # WSPRnet CSV format varies, typical columns:
+    # Timestamp, Call, Grid, dBm, W, Reporter, RGrid, km, az, Freq
+    try:
+        spot = {
+            "timestamp": row[0] if row[0] else "",
+            "tx_call": row[1] if len(row) > 1 else "",
+            "tx_grid": row[2] if len(row) > 2 else "",
+            "power_dbm": int(row[3]) if len(row) > 3 and row[3] else 0,
+            "power_w": float(row[4]) if len(row) > 4 and row[4] else 0,
+            "rx_call": row[5] if len(row) > 5 else "",
+            "rx_grid": row[6] if len(row) > 6 else "",
+            "distance_km": int(row[7]) if len(row) > 7 and row[7] else 0,
+            "azimuth": int(row[8]) if len(row) > 8 and row[8] else 0,
+            "frequency": float(row[9]) if len(row) > 9 and row[9] else 0,
+        }
+
+        # Add lat/lon for TX station
+        if spot["tx_grid"]:
+            coords = grid_to_latlon(spot["tx_grid"])
+            if coords:
+                spot["tx_lat"], spot["tx_lon"] = coords
+
+        # Add lat/lon for RX station
+        if spot["rx_grid"]:
+            coords = grid_to_latlon(spot["rx_grid"])
+            if coords:
+                spot["rx_lat"], spot["rx_lon"] = coords
+
+        return spot
+    except (ValueError, IndexError):
+        return None
+
+
+# ReticulumHF operating frequencies (kHz)
+RETICULUM_FREQUENCIES = {
+    "40m": {"freq_khz": 7090, "freq_mhz": 7.090},
+    "20m": {"freq_khz": 14090, "freq_mhz": 14.090},
+    "10m": {"freq_khz": 28090, "freq_mhz": 28.090},
+}
+
+
+@dashboard_bp.route('/frequency-recommendation', methods=['GET'])
+def api_frequency_recommendation():
+    """
+    Get recommended operating frequency based on time of day and propagation.
+
+    Uses N0NBH band conditions to suggest optimal frequency from:
+    - 7.090 MHz (40m) - Best for nighttime, short to medium range
+    - 14.090 MHz (20m) - Best for daytime, medium to long range
+    - 28.090 MHz (10m) - Best near solar maximum, daytime only
+
+    Returns the recommended frequency with reasoning.
+    """
+    import datetime
+
+    now_utc = datetime.datetime.utcnow()
+    hour = now_utc.hour
+
+    # Determine if it's day or night (rough approximation)
+    # Day: 06:00-18:00 UTC, Night: 18:00-06:00 UTC
+    is_day = 6 <= hour < 18
+    time_period = "day" if is_day else "night"
+
+    # Default recommendations based on time of day
+    # These are overridden by N0NBH data if available
+    if is_day:
+        # Daytime: prefer higher bands
+        default_priority = ["20m", "10m", "40m"]
+    else:
+        # Nighttime: prefer lower bands
+        default_priority = ["40m", "20m", "10m"]
+
+    result = {
+        "recommended_band": None,
+        "recommended_freq_khz": None,
+        "recommended_freq_mhz": None,
+        "time_utc": now_utc.strftime("%H:%M UTC"),
+        "time_period": time_period,
+        "reasoning": "",
+        "all_bands": {},
+        "beacon_times_utc": ["00:00", "06:00", "12:00", "18:00"],
+    }
+
+    # Try to get N0NBH data for better recommendations
+    try:
+        # Use cached solar data
+        if _solar_cache.get("data") and _solar_cache["data"].get("bands"):
+            bands = _solar_cache["data"]["bands"]
+
+            # Score each band based on conditions
+            band_scores = {}
+            for band_name, freq_info in RETICULUM_FREQUENCIES.items():
+                # Map our band names to N0NBH band names
+                n0nbh_map = {"40m": "40m-30m", "20m": "20m-17m", "10m": "10m"}
+                n0nbh_band = n0nbh_map.get(band_name, band_name)
+
+                band_data = bands.get(n0nbh_band, {})
+                condition = band_data.get(time_period, "Unknown")
+
+                # Score conditions
+                condition_scores = {
+                    "Good": 100,
+                    "Fair": 60,
+                    "Poor": 30,
+                    "Unknown": 0,
+                }
+                score = condition_scores.get(condition, 0)
+
+                # Boost higher bands during day, lower at night
+                if is_day and band_name == "20m":
+                    score += 20
+                elif is_day and band_name == "10m":
+                    score += 10
+                elif not is_day and band_name == "40m":
+                    score += 20
+
+                band_scores[band_name] = {
+                    "score": score,
+                    "condition": condition,
+                    "freq_khz": freq_info["freq_khz"],
+                    "freq_mhz": freq_info["freq_mhz"],
+                }
+
+            result["all_bands"] = band_scores
+
+            # Find best band
+            best_band = max(band_scores.items(), key=lambda x: x[1]["score"])
+            result["recommended_band"] = best_band[0]
+            result["recommended_freq_khz"] = best_band[1]["freq_khz"]
+            result["recommended_freq_mhz"] = best_band[1]["freq_mhz"]
+            result["reasoning"] = (
+                f"{best_band[0]} ({best_band[1]['freq_mhz']} MHz) is {best_band[1]['condition'].lower()} "
+                f"during {time_period}time according to N0NBH propagation data."
+            )
+        else:
+            raise ValueError("No solar data available")
+
+    except Exception as e:
+        # Fallback to time-based defaults
+        log.warning(f"Using time-based frequency recommendation: {e}")
+        best_band = default_priority[0]
+        freq_info = RETICULUM_FREQUENCIES[best_band]
+
+        result["recommended_band"] = best_band
+        result["recommended_freq_khz"] = freq_info["freq_khz"]
+        result["recommended_freq_mhz"] = freq_info["freq_mhz"]
+        result["reasoning"] = (
+            f"{best_band} ({freq_info['freq_mhz']} MHz) is typically best for "
+            f"{time_period}time propagation."
+        )
+
+        # Populate all_bands with defaults
+        for band_name, freq_info in RETICULUM_FREQUENCIES.items():
+            result["all_bands"][band_name] = {
+                "score": 50 if band_name == best_band else 30,
+                "condition": "Default",
+                "freq_khz": freq_info["freq_khz"],
+                "freq_mhz": freq_info["freq_mhz"],
+            }
+
+    return jsonify(result)
+
+
 # ============================================================================
 # Operating Mode API
 # ============================================================================
