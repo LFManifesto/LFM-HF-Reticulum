@@ -29,7 +29,7 @@ from hardware import (
     get_single_audio_control
 )
 from dashboard import dashboard_bp, state as dashboard_state, start_rx_monitor
-from js8call import js8call_bp, init_client as init_js8call_client
+from js8call import js8call_bp, startup_from_config as js8call_startup
 
 # Configuration constants
 FREEDVTNC2_STARTUP_TIMEOUT_SECS = 15  # Wait for freedvtnc2 to start listening
@@ -1240,6 +1240,72 @@ def api_system_info():
     return jsonify(get_system_info())
 
 
+@app.route("/api/time", methods=['GET'])
+def api_time_get():
+    """Get current system time."""
+    import datetime
+    now = datetime.datetime.now()
+    return jsonify({
+        "timestamp": now.timestamp(),
+        "iso": now.isoformat(),
+        "utc": datetime.datetime.utcnow().isoformat() + "Z",
+        "timezone": time.tzname[0] if time.daylight == 0 else time.tzname[1],
+    })
+
+
+@app.route("/api/time", methods=['POST'])
+def api_time_set():
+    """
+    Set system time from client.
+
+    Allows phones/clients to sync time with the Pi when no NTP is available.
+    Requires root privileges (portal runs as root).
+    """
+    import datetime
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    # Accept either ISO string or Unix timestamp
+    try:
+        if 'timestamp' in data:
+            ts = float(data['timestamp'])
+            new_time = datetime.datetime.fromtimestamp(ts)
+        elif 'iso' in data:
+            new_time = datetime.datetime.fromisoformat(data['iso'].replace('Z', '+00:00'))
+        else:
+            return jsonify({"error": "Provide 'timestamp' or 'iso' field"}), 400
+
+        # Set system time using date command
+        time_str = new_time.strftime('%Y-%m-%d %H:%M:%S')
+        result = subprocess.run(
+            ['date', '-s', time_str],
+            capture_output=True, text=True, timeout=5
+        )
+
+        if result.returncode == 0:
+            log.info(f"System time set to {time_str} via API")
+            # Also sync to hardware clock if available
+            subprocess.run(['hwclock', '-w'], capture_output=True, timeout=5)
+            return jsonify({
+                "success": True,
+                "message": f"Time set to {time_str}",
+                "new_time": datetime.datetime.now().isoformat()
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.stderr.strip() or "Failed to set time"
+            }), 500
+
+    except ValueError as e:
+        return jsonify({"error": f"Invalid time format: {e}"}), 400
+    except Exception as e:
+        log.error(f"Failed to set time: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/rnstatus")
 def api_rnstatus():
     """API endpoint to get rnstatus output."""
@@ -2154,19 +2220,11 @@ def startup_integrations():
 
     threading.Thread(target=apply_mode_delayed, daemon=True).start()
 
-    # Auto-connect to JS8Call if configured
-    js8_config_path = Path("/etc/reticulumhf/js8call.json")
-    if js8_config_path.exists():
-        try:
-            with open(js8_config_path) as f:
-                js8_config = json.load(f)
-            if js8_config.get("enabled", False):
-                host = js8_config.get("host", "127.0.0.1")
-                port = js8_config.get("port", 2442)
-                log.info(f"Auto-connecting to JS8Call at {host}:{port}")
-                init_js8call_client(host=host, port=port)
-        except Exception as e:
-            log.warning(f"Failed to auto-connect JS8Call: {e}")
+    # Auto-connect to JS8Call gateway if configured
+    try:
+        js8call_startup()
+    except Exception as e:
+        log.warning(f"Failed to start JS8Call gateway: {e}")
 
     # Load TAK config into dashboard state
     tak_config_path = Path("/etc/reticulumhf/tak.json")
