@@ -193,6 +193,32 @@ else
     log "  [WARN] RNS config not found at $RNS_CONFIG_SRC"
 fi
 
+# Start i2pd and wait for it to reseed
+log "Starting i2pd (I2P transport)..."
+systemctl enable i2pd 2>/dev/null || true
+systemctl start i2pd 2>&1
+sleep 2
+
+# Wait for i2pd to reseed (check for >5 routers)
+log "Waiting for i2pd to reseed from I2P network..."
+I2PD_READY=0
+for i in {1..60}; do
+    ROUTERS=$(curl -s "http://127.0.0.1:7070/" 2>/dev/null | grep -oP 'Routers:</b> \K[0-9]+' || echo "0")
+    if [ "$ROUTERS" -gt 5 ]; then
+        log "  [OK] i2pd reseeded with $ROUTERS routers after ${i}s"
+        I2PD_READY=1
+        break
+    fi
+    if [ $((i % 10)) -eq 0 ]; then
+        log "  Still waiting for i2pd reseed... ($ROUTERS routers, ${i}s)"
+    fi
+    sleep 1
+done
+
+if [ $I2PD_READY -eq 0 ]; then
+    log "  [WARN] i2pd reseed timeout - I2P may take longer to connect"
+fi
+
 # Restart RNS daemon to load new config
 log "Starting RNS daemon..."
 systemctl enable reticulumhf-rnsd 2>/dev/null || true
