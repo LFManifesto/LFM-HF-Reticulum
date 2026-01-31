@@ -29,7 +29,6 @@ from hardware import (
     get_single_audio_control
 )
 from dashboard import dashboard_bp, state as dashboard_state, start_rx_monitor
-from js8call import js8call_bp, startup_from_config as js8call_startup
 
 # Configuration constants
 FREEDVTNC2_STARTUP_TIMEOUT_SECS = 15  # Wait for freedvtnc2 to start listening
@@ -67,7 +66,6 @@ app = Flask(__name__)
 
 # Register blueprints
 app.register_blueprint(dashboard_bp)
-app.register_blueprint(js8call_bp)
 
 
 @app.after_request
@@ -246,21 +244,21 @@ def generate_reticulum_config(radio_id: str, serial_port: str, audio_card: int,
     # I2P Interface - full transport for internet connectivity
     config_lines.extend([
         "",
-        "  # I2P transport - connects to Lightfighter Reticulum network",
-        "  # Handles announcements and bulk traffic over internet",
-        "  [[Lightfighter I2P]]",
+        "  # I2P outbound connection to LFNet (pi1)",
+        "  # The 'Peer' connection is what matters - 'Listener' will show Down (normal)",
+        "  [[I2P to LFNet]]",
         "    type = I2PInterface",
         f"    enabled = {'yes' if i2p_enabled else 'no'}",
-        "    connectable = yes",
+        "    connectable = no",  # We don't need incoming connections
         f"    peers = {i2p_peer}",
     ])
 
-    # HF Interface - boundary mode with TX gating
+    # HF Interface - boundary mode with TX gating in freedvtnc2
     config_lines.extend([
         "",
         "  # FreeDV HF Interface (via freedvtnc2)",
-        "  # Boundary mode + announce_cap=0 prevents automatic TX",
-        "  # TX gating enforced by modem (beacon windows only in hybrid mode)",
+        "  # Boundary mode prevents transport traffic, announce_cap limits announce floods",
+        "  # TX control is handled by freedvtnc2 TX gate (hybrid mode = TX disabled except beacons)",
         "  [[FreeDV HF]]",
         "    type = TCPClientInterface",
         "    enabled = yes",
@@ -268,8 +266,7 @@ def generate_reticulum_config(radio_id: str, serial_port: str, audio_card: int,
         "    target_port = 8001",
         "    kiss_framing = yes",
         "    mode = boundary",
-        "    # Never automatically announce on HF - use beacon scheduler instead",
-        "    announce_cap = 0",
+        "    announce_cap = 1",
         "",
     ])
 
@@ -1173,32 +1170,6 @@ RETICULUMHF_AP_PASS={wifi_password}
         with open(beacon_config_path, "w") as f:
             json.dump(beacon_config, f, indent=2)
 
-        # Create js8call.json config
-        js8_config_path = env_dir / "js8call.json"
-        js8_enabled = data.get("js8_enabled", False)
-        js8_config = {
-            "enabled": js8_enabled,
-            "host": data.get("js8_host", "127.0.0.1"),
-            "port": data.get("js8_port", 2442),
-            "auto_heartbeat": False,
-            "heartbeat_with_beacon": True,
-            "bridge_messages": False,
-        }
-        with open(js8_config_path, "w") as f:
-            json.dump(js8_config, f, indent=2)
-
-        # Create tak.json config
-        tak_config_path = env_dir / "tak.json"
-        tak_enabled = data.get("tak_enabled", False)
-        tak_config = {
-            "enabled": tak_enabled,
-            "host": data.get("tak_host", ""),
-            "port": data.get("tak_port", 8087),
-            "protocol": "udp",
-        }
-        with open(tak_config_path, "w") as f:
-            json.dump(tak_config, f, indent=2)
-
         # Enable beacon scheduler service (starts on next boot or manual start)
         subprocess.run(["systemctl", "enable", "reticulumhf-beacon"], capture_output=True)
 
@@ -1213,8 +1184,6 @@ RETICULUMHF_AP_PASS={wifi_password}
             "beacon_enabled": True,
             "beacon_message": beacon_message,
             "tx_beacon": tx_beacon,
-            "js8_enabled": js8_enabled,
-            "tak_enabled": tak_enabled,
             "reboot_required": False
         })
 
@@ -2219,27 +2188,6 @@ def startup_integrations():
         apply_operating_mode_to_modem()
 
     threading.Thread(target=apply_mode_delayed, daemon=True).start()
-
-    # Auto-connect to JS8Call gateway if configured
-    try:
-        js8call_startup()
-    except Exception as e:
-        log.warning(f"Failed to start JS8Call gateway: {e}")
-
-    # Load TAK config into dashboard state
-    tak_config_path = Path("/etc/reticulumhf/tak.json")
-    if tak_config_path.exists():
-        try:
-            with open(tak_config_path) as f:
-                tak_config = json.load(f)
-            dashboard_state.tak_enabled = tak_config.get("enabled", False)
-            dashboard_state.tak_host = tak_config.get("host", "")
-            dashboard_state.tak_port = tak_config.get("port", 8087)
-            dashboard_state.tak_protocol = tak_config.get("protocol", "udp")
-            if dashboard_state.tak_enabled:
-                log.info(f"TAK integration enabled: {dashboard_state.tak_host}:{dashboard_state.tak_port}")
-        except Exception as e:
-            log.warning(f"Failed to load TAK config: {e}")
 
 
 if __name__ == "__main__":
