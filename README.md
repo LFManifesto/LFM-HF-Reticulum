@@ -1,122 +1,115 @@
 # ReticulumHF
 
-**v0.4.0-alpha** - Experimental Reticulum networking over HF radio.
+**v0.4.0-alpha** - Reticulum mesh networking over HF radio using FreeDV data modes.
 
 ## What This Is
 
-A Raspberry Pi image that creates a WiFi gateway for Reticulum mesh networking over HF radio using FreeDV data modes. Connect your phone (Sideband) or laptop (MeshChat) to the Pi's WiFi, and it bridges your traffic to HF.
+A Raspberry Pi image that creates a WiFi gateway for [Reticulum](https://reticulum.network) mesh networking over HF radio. Connect Sideband, MeshChat, or NomadNet to the Pi's WiFi, and it bridges your traffic to HF using [FreeDV](https://freedv.org) digital modes.
 
-**This is experimental alpha software.** Expect bugs, limitations, and ongoing development.
+## Technical Specifications
 
-## What It Can Do
+### FreeDV Data Modes
 
-- **HF Data Gateway**: Bridge Reticulum traffic over HF using FreeDV DATAC1 (980 bps)
-- **Multi-Path Routing**: Combine HF radio with I2P internet transport
-- **Web Dashboard**: Monitor solar conditions, RX levels, and network health
-- **TX Gating**: Limit HF transmissions to scheduled beacon windows (hybrid mode)
-- **Automatic Setup**: Web wizard configures radio, audio, and network settings
+| Mode | Data Rate | Bandwidth | Bytes/Frame | Frame Time | Min SNR |
+|------|-----------|-----------|-------------|------------|---------|
+| DATAC1 | 980 bps | 1700 Hz | 510 | 4.18s | 5 dB |
+| DATAC4 | 87 bps | 250 Hz | 56 | 5.17s | -4 dB |
 
-## What It Cannot Do
+Source: [codec2 README_data.md](https://github.com/drowe67/codec2/blob/main/README_data.md)
 
-- **Fast file transfers**: 980 bps is roughly 120 bytes/second. A 1KB message takes ~10 seconds.
-- **Reliable delivery**: HF propagation is inconsistent. Messages may not get through.
-- **Long range guaranteed**: Range depends on band conditions, antenna, power, and luck.
-- **Replace internet**: Even with I2P, this is slow mesh networking, not broadband.
-- **Work without setup**: You need a radio, antenna, audio interface, and amateur license.
+### Throughput (DATAC1)
 
-## Realistic Expectations
+- **Raw throughput**: 122 bytes/second
+- **LXMF overhead**: 111 bytes per message
+- **Short message (200 chars)**: ~2.5 seconds TX time
+- **Full frame (510 bytes)**: 4.18 seconds TX time
 
-| Use Case | Feasibility |
-|----------|-------------|
-| Emergency text messaging | Good - short messages work |
-| LXMF mail (async) | Good - store-and-forward designed for this |
-| Real-time chat | Poor - latency and packet loss |
-| File sharing | Poor - painfully slow |
-| Voice/video | No - insufficient bandwidth |
+### Reticulum Requirements
 
-**Best for:** Off-grid text messaging, emergency backup comms, mesh networking experiments, amateur radio digital modes.
+- MTU: 500 bytes
+- Minimum throughput: 5 bps (DATAC1 provides 980 bps)
+- Half-duplex supported
+
+Source: [Reticulum Manual](https://reticulum.network/manual/understanding.html)
+
+## What Works
+
+- **LXMF messaging**: Asynchronous encrypted messages with store-and-forward
+- **Mesh discovery**: Beacon announces find other nodes
+- **Multi-path routing**: HF + I2P internet transport
+- **Offline operation**: Works without any internet infrastructure
+
+## What Doesn't Work Well
+
+- **Real-time chat**: HF propagation causes variable latency
+- **Large transfers**: 122 bytes/sec means files take a long time
+- **Guaranteed delivery**: Propagation is unpredictable
 
 ## Quick Start
 
-1. Flash [latest image](https://github.com/LFManifesto/ReticulumHF/releases) to SD card
-2. Boot Pi with radio connected via Digirig/audio interface
+1. Flash [image](https://github.com/LFManifesto/ReticulumHF/releases) to SD card
+2. Boot Pi with radio + Digirig connected
 3. Connect to WiFi: `ReticulumHF` / `reticulumhf`
-4. Open `http://192.168.4.1` and complete setup wizard
+4. Open `http://192.168.4.1` - complete setup wizard
 5. Connect Sideband/MeshChat to `192.168.4.1:4242` (TCP Client Interface)
-
-**Optional:** Connect ethernet for I2P transport (internet backhaul).
 
 ## Operating Modes
 
-| Mode | Description |
-|------|-------------|
-| **Hybrid** (default) | I2P handles bulk traffic, HF only for beacons. Best for most users. |
-| **HF Only** | All traffic over HF. For field ops without internet. Slow but works. |
-| **Internet Only** | HF TX disabled. For testing or when radio is off. |
+| Mode | HF TX | I2P | Description |
+|------|-------|-----|-------------|
+| Hybrid | Beacon windows | Enabled | I2P for bulk, HF for discovery |
+| HF Only | Full | Disabled | Field ops, no internet |
+| Internet Only | Disabled | Enabled | Radio off/maintenance |
 
-## Hardware Requirements
+## Hardware
 
-- Raspberry Pi 4 (2GB+ RAM)
+**Required:**
+- Raspberry Pi 4 (2GB+)
 - HF radio with data port
-- Audio interface (Digirig Mobile recommended)
-- Antenna appropriate for your band
-- Amateur radio license (required in most countries)
+- Audio interface (Digirig Mobile)
+- Antenna for your band
+- Amateur radio license
 
-### Tested Radios
+**Tested Radios:**
 
 | Radio | Interface | CAT Control |
 |-------|-----------|-------------|
-| Xiegu G90 | Digirig Mobile | Hamlib 3088, 19200 baud |
-| Yaesu FT-818 | Digirig Mobile | Hamlib 1020, 4800 baud |
-| (tr)uSDX | Digirig Lite | VOX mode only |
+| Xiegu G90 | Digirig Mobile | Hamlib 3088 |
+| Yaesu FT-818 | Digirig Mobile | Hamlib 1020 |
+| (tr)uSDX | Digirig Lite | VOX only |
 
-## Network Details
+## Network
 
 | Setting | Value |
 |---------|-------|
 | WiFi AP | `ReticulumHF` / `reticulumhf` |
-| Web Portal | `http://192.168.4.1` |
-| Client Port | 4242 (TCP Client Interface) |
+| Portal | `http://192.168.4.1` |
+| Client Port | 4242 |
 | SSH | `pi` / `reticulumhf` |
-| I2P Peer | Lightfighter Reticulum node |
 
-## Dashboard Features
+## Dashboard
 
-- **Solar/Propagation**: Real-time N0NBH data (SFI, A/K index, band conditions)
-- **RX Level Monitor**: Live signal strength from modem
-- **Network Health**: Score based on peers, signal, and interface status
-- **Beacon Scheduler**: Control TX windows and force manual beacons
-- **Station Map**: Leaflet map showing discovered peers by grid square
+- Solar/propagation data (N0NBH)
+- RX level monitor
+- Network health score
+- Beacon scheduler
+- Station map (grid squares)
 
 ## Architecture
 
 ```
-┌─────────────┐         ┌─────────────────┐         ┌─────────────┐
-│ Sideband/   │  WiFi   │   Raspberry Pi  │  Audio  │  HF Radio   │
-│ MeshChat    │────────►│   Gateway       │────────►│  + Antenna  │
-└─────────────┘  :4242  │                 │  PTT    └─────────────┘
-                        │  ┌───────────┐  │
-                        │  │ freedvtnc2│  │         ┌─────────────┐
-                        │  │ (modem)   │  │  I2P    │  Internet   │
-                        │  └───────────┘  │────────►│  (optional) │
-                        └─────────────────┘         └─────────────┘
+Sideband/MeshChat ──WiFi:4242──► Pi Gateway ──Audio/PTT──► HF Radio
+                                     │
+                                     └──I2P──► Internet (optional)
 ```
 
-## Limitations & Known Issues
+## References
 
-- **Alpha software**: Bugs expected, not for critical use
-- **HF is slow**: Don't expect internet-like speeds
-- **Propagation varies**: What works at noon may not work at midnight
-- **Single frequency**: Currently operates on one frequency at a time
-- **No ALE**: Manual frequency selection only
-- **Power hungry**: Pi + radio draws significant current for portable use
-
-## Development
-
-Built on:
-- [Reticulum](https://reticulum.network) - Cryptographic mesh networking
-- [freedvtnc2](https://github.com/xssfox/freedvtnc2) - FreeDV TNC (LFM fork with TX gating)
-- [FreeDV](https://freedv.org) - Open source digital voice/data modes
+- [Reticulum Network](https://reticulum.network)
+- [FreeDV](https://freedv.org)
+- [LXMF Protocol](https://github.com/markqvist/LXMF)
+- [freedvtnc2](https://github.com/xssfox/freedvtnc2)
+- [codec2 Data Modes](https://github.com/drowe67/codec2/blob/main/README_data.md)
 
 ## License
 
@@ -125,7 +118,3 @@ MIT
 ## Author
 
 [Light Fighter Manifesto](https://lightfightermanifesto.org)
-
----
-
-**Remember:** This is amateur radio experimentation. Results will vary. Have fun, learn something, and don't rely on this for anything critical.
