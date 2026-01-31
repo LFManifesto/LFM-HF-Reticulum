@@ -1,0 +1,21 @@
+[Unit]
+Description=ReticulumHF Launcher Portal
+Documentation=https://github.com/LFManifesto/ReticulumHF
+After=network.target hostapd.service dnsmasq.service
+Wants=hostapd.service dnsmasq.service
+ConditionPathExists=/opt/reticulumhf/launcher/app.py
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/reticulumhf/launcher
+ExecStart=/usr/bin/python3 /opt/reticulumhf/launcher/app.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/reticulumhf-launcher.log
+StandardError=append:/var/log/reticulumhf-launcher.log
+
+[Install]
+WantedBy=multi-user.target

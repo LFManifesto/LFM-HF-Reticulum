@@ -1,0 +1,49 @@
+[Unit]
+Description=Reticulum Network Stack for HF Mode
+After=network.target reticulumhf-hf-freedvtnc2.service
+Wants=reticulumhf-hf-freedvtnc2.service
+PartOf=reticulumhf-hf.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+Environment="PATH=/home/pi/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStartPre=/bin/bash -c '\
+    mkdir -p /home/pi/.reticulum && \
+    cat > /home/pi/.reticulum/config << EOF
+[reticulum]
+  enable_transport = True
+  share_instance = True
+  shared_instance_port = 37428
+  instance_control_port = 37429
+  panic_on_interface_error = No
+
+[logging]
+  loglevel = 4
+
+[interfaces]
+  [[TCP Gateway]]
+    type = TCPServerInterface
+    mode = gateway
+    interface_enabled = True
+    listen_ip = 0.0.0.0
+    listen_port = 4242
+
+  [[FreeDV HF]]
+    type = KISSInterface
+    interface_enabled = True
+    kiss_framing = True
+    bitrate = 700
+    mode = boundary
+    connect_host = 127.0.0.1
+    connect_port = 8001
+EOF
+'
+ExecStart=/home/pi/.local/bin/rnsd --service
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=reticulumhf-hf.target

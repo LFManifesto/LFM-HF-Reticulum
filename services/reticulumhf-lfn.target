@@ -1,0 +1,11 @@
+[Unit]
+Description=ReticulumHF Internet Gateway Mode (LFN)
+Documentation=https://github.com/LFManifesto/ReticulumHF
+# This target groups all LFN-related services
+# When started: i2pd and LFN rnsd start
+# When stopped: all LFN services stop
+Conflicts=reticulumhf-hf.target
+After=network.target
+
+[Install]
+WantedBy=multi-user.target

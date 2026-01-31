@@ -1,0 +1,23 @@
+[Unit]
+Description=Hamlib rigctld for ReticulumHF HF Mode
+After=network.target
+PartOf=reticulumhf-hf.target
+ConditionPathExists=/etc/reticulumhf/hf.json
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+Group=dialout
+ExecStart=/bin/bash -c '\
+    CONFIG=$(cat /etc/reticulumhf/hf.json); \
+    MODEL=$(echo "$CONFIG" | python3 -c "import sys,json; print(json.load(sys.stdin).get(\"hamlib_model\", 1))"); \
+    PORT=$(echo "$CONFIG" | python3 -c "import sys,json; print(json.load(sys.stdin).get(\"serial_port\", \"/dev/ttyUSB0\"))"); \
+    BAUD=$(echo "$CONFIG" | python3 -c "import sys,json; print(json.load(sys.stdin).get(\"baud_rate\", 9600))"); \
+    exec rigctld -m "$MODEL" -r "$PORT" -s "$BAUD" -T 127.0.0.1 -t 4532'
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=reticulumhf-hf.target

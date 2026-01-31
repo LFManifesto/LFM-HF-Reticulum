@@ -1,0 +1,31 @@
+[Unit]
+Description=FreeDV TNC for ReticulumHF HF Mode
+After=network.target reticulumhf-hf-rigctld.service
+Wants=reticulumhf-hf-rigctld.service
+PartOf=reticulumhf-hf.target
+ConditionPathExists=/etc/reticulumhf/hf.json
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+Group=audio
+Environment="PATH=/home/pi/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/bin/bash -c '\
+    CONFIG=$(cat /etc/reticulumhf/hf.json); \
+    AUDIO=$(echo "$CONFIG" | python3 -c "import sys,json; print(json.load(sys.stdin).get(\"audio_device\", \"hw:1\"))"); \
+    exec /home/pi/.local/bin/freedvtnc2 \
+        --kiss-tcp-address 127.0.0.1 \
+        --kiss-tcp-port 8001 \
+        --cmd-tcp-address 127.0.0.1 \
+        --cmd-tcp-port 8002 \
+        --input-device "$AUDIO" \
+        --output-device "$AUDIO" \
+        --mode datac1 \
+        --rigctl-address 127.0.0.1:4532'
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=reticulumhf-hf.target

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HF Gateway Status</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-muted: #888;
+            --accent: #f59e0b;
+            --success: #4ade80;
+            --error: #f87171;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .status-badge.active {
+            background: var(--success);
+            color: #000;
+        }
+
+        .status-badge.inactive {
+            background: var(--error);
+            color: #fff;
+        }
+
+        .subtitle { color: var(--text-muted); font-size: 0.85rem; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        .service-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .service-row:last-child { border-bottom: none; }
+
+        .service-name { font-size: 0.9rem; }
+
+        .service-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+
+        .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .indicator.on { background: var(--success); }
+        .indicator.off { background: var(--error); }
+
+        .rnstatus-output {
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: #fff;
+        }
+
+        .btn:hover { opacity: 0.9; }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .info-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 16px;
+            font-size: 0.85rem;
+        }
+
+        .info-box h3 {
+            color: var(--accent);
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .info-box code {
+            background: var(--bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+
+        table {
+            width: 100%;
+            font-size: 0.85rem;
+        }
+
+        table td {
+            padding: 4px 0;
+        }
+
+        table td:first-child {
+            color: var(--text-muted);
+            width: 40%;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        footer a { color: var(--accent); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                HF Gateway
+                <span class="status-badge active" id="mode-badge">Active</span>
+            </h1>
+            <p class="subtitle">FreeDV Radio Interface</p>
+        </header>
+
+        <!-- Services -->
+        <div class="card">
+            <div class="card-title">Services</div>
+
+            <div class="service-row">
+                <span class="service-name">rigctld (CAT Control)</span>
+                <span class="service-status">
+                    <span class="indicator off" id="rigctld-indicator"></span>
+                    <span id="rigctld-status">Checking...</span>
+                </span>
+            </div>
+
+            <div class="service-row">
+                <span class="service-name">freedvtnc2 (Modem)</span>
+                <span class="service-status">
+                    <span class="indicator off" id="freedvtnc2-indicator"></span>
+                    <span id="freedvtnc2-status">Checking...</span>
+                </span>
+            </div>
+
+            <div class="service-row">
+                <span class="service-name">rnsd (Reticulum)</span>
+                <span class="service-status">
+                    <span class="indicator off" id="rnsd-indicator"></span>
+                    <span id="rnsd-status">Checking...</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Reticulum Status -->
+        <div class="card">
+            <div class="card-title">Reticulum Network</div>
+            <div id="rnstatus-container" class="rnstatus-output">Loading...</div>
+        </div>
+
+        <!-- Connection Info -->
+        <div class="info-box">
+            <h3>Connect from Sideband / MeshChat</h3>
+            <table>
+                <tr><td>Interface Type</td><td><code>TCP Client Interface</code></td></tr>
+                <tr><td>Address</td><td><code>{{ system_info.ip_address }}</code></td></tr>
+                <tr><td>Port</td><td><code>4242</code></td></tr>
+            </table>
+        </div>
+
+        <!-- Actions -->
+        <div class="card">
+            <div class="btn-row">
+                <button class="btn btn-secondary" onclick="refreshStatus()">Refresh</button>
+                <button class="btn btn-secondary" onclick="reconfigure()">Reconfigure</button>
+                <form action="/stop" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Stop & Exit</button>
+                </form>
+            </div>
+        </div>
+
+        <footer>
+            <p>ReticulumHF v0.6.0-alpha | <a href="https://lightfightermanifesto.org" target="_blank">Light Fighter Manifesto</a></p>
+        </footer>
+    </div>
+
+    <script>
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/hf/status');
+                const data = await res.json();
+
+                // Update badge
+                const badge = document.getElementById('mode-badge');
+                badge.className = 'status-badge ' + (data.active ? 'active' : 'inactive');
+                badge.textContent = data.active ? 'Active' : 'Inactive';
+
+                // Update services
+                updateService('rigctld', data.rigctld?.running);
+                updateService('freedvtnc2', data.freedvtnc2?.running);
+                updateService('rnsd', data.rnsd?.running);
+
+            } catch (err) {
+                console.error('Status fetch error:', err);
+            }
+        }
+
+        function updateService(name, running) {
+            const indicator = document.getElementById(name + '-indicator');
+            const status = document.getElementById(name + '-status');
+
+            if (running) {
+                indicator.className = 'indicator on';
+                status.textContent = 'Running';
+            } else {
+                indicator.className = 'indicator off';
+                status.textContent = 'Stopped';
+            }
+        }
+
+        async function fetchRnstatus() {
+            try {
+                const res = await fetch('/api/rnstatus');
+                const data = await res.json();
+                document.getElementById('rnstatus-container').textContent =
+                    data.success ? data.output : 'Error: ' + data.error;
+            } catch (err) {
+                document.getElementById('rnstatus-container').textContent = 'Failed to fetch';
+            }
+        }
+
+        function refreshStatus() {
+            fetchStatus();
+            fetchRnstatus();
+        }
+
+        function reconfigure() {
+            window.location.href = '/hf/setup';
+        }
+
+        // Initial load
+        refreshStatus();
+
+        // Auto-refresh every 10 seconds
+        setInterval(refreshStatus, 10000);
+    </script>
+</body>
+</html>

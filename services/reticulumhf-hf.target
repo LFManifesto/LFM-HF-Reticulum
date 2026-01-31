@@ -1,0 +1,11 @@
+[Unit]
+Description=ReticulumHF HF Gateway Mode
+Documentation=https://github.com/LFManifesto/ReticulumHF
+# This target groups all HF-related services
+# When started: rigctld, freedvtnc2, and HF rnsd all start
+# When stopped: all HF services stop
+Conflicts=reticulumhf-lfn.target
+After=network.target
+
+[Install]
+WantedBy=multi-user.target

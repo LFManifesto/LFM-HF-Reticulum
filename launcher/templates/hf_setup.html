@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HF Gateway Setup</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-muted: #888;
+            --accent: #f59e0b;
+            --accent-hover: #fbbf24;
+            --success: #4ade80;
+            --error: #f87171;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 4px; }
+        .subtitle { color: var(--text-muted); font-size: 0.85rem; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .step-num {
+            background: var(--accent);
+            color: #000;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        select, input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover { background: #444; }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 12px;
+            font-size: 0.85rem;
+        }
+
+        .status.success {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .status.error {
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        .status.info {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .detected-list {
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+
+        .detected-item {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .detected-item:last-child { border-bottom: none; }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 16px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        .back-link:hover { color: var(--text); }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">&larr; Back to launcher</a>
+
+        <header>
+            <h1>HF Gateway Setup</h1>
+            <p class="subtitle">Configure your radio connection</p>
+        </header>
+
+        <!-- Step 1: Detect Hardware -->
+        <div class="card">
+            <h2><span class="step-num">1</span> Detect Hardware</h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">
+                Connect your radio interface (Digirig, SignaLink, etc.) to a USB port.
+            </p>
+
+            <button class="btn btn-secondary" onclick="detectHardware()">Detect Hardware</button>
+
+            <div id="hardware-results" class="hidden">
+                <div class="detected-list">
+                    <div class="detected-item">
+                        <strong>Serial Ports:</strong>
+                        <span id="detected-serial">None found</span>
+                    </div>
+                    <div class="detected-item">
+                        <strong>Audio Devices:</strong>
+                        <span id="detected-audio">None found</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Select Devices -->
+        <div class="card">
+            <h2><span class="step-num">2</span> Select Devices</h2>
+
+            <label for="serial-port">Serial Port (CAT Control)</label>
+            <select id="serial-port">
+                <option value="">-- Click "Detect Hardware" first --</option>
+            </select>
+
+            <label for="audio-device">Audio Device</label>
+            <select id="audio-device">
+                <option value="">-- Click "Detect Hardware" first --</option>
+            </select>
+
+            <label for="hamlib-model">Radio Model (Hamlib ID)</label>
+            <select id="hamlib-model">
+                <option value="1">Dummy (for testing)</option>
+                <option value="3088">Xiegu G90/G106</option>
+                <option value="1035">Xiegu X6100</option>
+                <option value="1020">Yaesu FT-817/818/857/897</option>
+                <option value="1024">Yaesu FT-991/991A</option>
+                <option value="3085">Icom IC-705</option>
+                <option value="3081">Icom IC-7300</option>
+                <option value="2">NET rigctl (if using remote)</option>
+            </select>
+
+            <label for="baud-rate">Baud Rate</label>
+            <select id="baud-rate">
+                <option value="9600">9600</option>
+                <option value="19200">19200</option>
+                <option value="38400">38400</option>
+                <option value="57600">57600</option>
+                <option value="115200">115200</option>
+            </select>
+        </div>
+
+        <!-- Step 3: Test Connection -->
+        <div class="card">
+            <h2><span class="step-num">3</span> Test Connection</h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">
+                Turn on your radio and test the CAT connection.
+            </p>
+
+            <button class="btn btn-secondary" onclick="testCAT()" id="test-btn">Test CAT Connection</button>
+
+            <div id="test-status" class="hidden"></div>
+        </div>
+
+        <!-- Step 4: Save & Start -->
+        <div class="card">
+            <h2><span class="step-num">4</span> Save & Start</h2>
+
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="saveAndStart()" id="save-btn" disabled>
+                    Save Configuration & Start HF Gateway
+                </button>
+            </div>
+
+            <div id="save-status" class="hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        let hardwareDetected = false;
+        let catTested = false;
+
+        async function detectHardware() {
+            const resultsDiv = document.getElementById('hardware-results');
+            const serialSelect = document.getElementById('serial-port');
+            const audioSelect = document.getElementById('audio-device');
+
+            try {
+                const res = await fetch('/api/hf/detect', { method: 'POST' });
+                const data = await res.json();
+
+                // Update serial ports
+                serialSelect.innerHTML = '<option value="">-- Select serial port --</option>';
+                if (data.serial_ports && data.serial_ports.length > 0) {
+                    data.serial_ports.forEach(port => {
+                        serialSelect.innerHTML += `<option value="${port}">${port}</option>`;
+                    });
+                    document.getElementById('detected-serial').textContent = data.serial_ports.join(', ');
+                } else {
+                    document.getElementById('detected-serial').textContent = 'None found';
+                }
+
+                // Update audio devices
+                audioSelect.innerHTML = '<option value="">-- Select audio device --</option>';
+                if (data.audio_devices && data.audio_devices.length > 0) {
+                    data.audio_devices.forEach(dev => {
+                        audioSelect.innerHTML += `<option value="${dev.id}">${dev.name} (${dev.id})</option>`;
+                    });
+                    document.getElementById('detected-audio').textContent =
+                        data.audio_devices.map(d => d.name).join(', ');
+                } else {
+                    document.getElementById('detected-audio').textContent = 'None found';
+                }
+
+                resultsDiv.classList.remove('hidden');
+                hardwareDetected = true;
+
+            } catch (err) {
+                alert('Error detecting hardware: ' + err.message);
+            }
+        }
+
+        async function testCAT() {
+            const serialPort = document.getElementById('serial-port').value;
+            const baudRate = document.getElementById('baud-rate').value;
+            const hamlibModel = document.getElementById('hamlib-model').value;
+            const statusDiv = document.getElementById('test-status');
+
+            if (!serialPort) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'Please select a serial port first';
+                statusDiv.classList.remove('hidden');
+                return;
+            }
+
+            statusDiv.className = 'status info';
+            statusDiv.textContent = 'Testing connection...';
+            statusDiv.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/hf/test-cat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        serial_port: serialPort,
+                        baud_rate: parseInt(baudRate),
+                        hamlib_model: parseInt(hamlibModel)
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = data.message;
+                    catTested = true;
+                    document.getElementById('save-btn').disabled = false;
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = 'Failed: ' + data.error;
+                }
+
+            } catch (err) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'Error: ' + err.message;
+            }
+        }
+
+        async function saveAndStart() {
+            const statusDiv = document.getElementById('save-status');
+            const saveBtn = document.getElementById('save-btn');
+
+            const config = {
+                serial_port: document.getElementById('serial-port').value,
+                baud_rate: parseInt(document.getElementById('baud-rate').value),
+                hamlib_model: parseInt(document.getElementById('hamlib-model').value),
+                audio_device: document.getElementById('audio-device').value,
+            };
+
+            if (!config.serial_port || !config.audio_device) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'Please select both serial port and audio device';
+                statusDiv.classList.remove('hidden');
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            statusDiv.className = 'status info';
+            statusDiv.textContent = 'Saving configuration...';
+            statusDiv.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/hf/save-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = 'Configuration saved! Starting HF Gateway...';
+
+                    // Now start HF mode
+                    setTimeout(() => {
+                        window.location.href = '/select/hf';
+                    }, 1000);
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = 'Failed to save: ' + data.error;
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save Configuration & Start HF Gateway';
+                }
+
+            } catch (err) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'Error: ' + err.message;
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Configuration & Start HF Gateway';
+            }
+        }
+    </script>
+</body>
+</html>

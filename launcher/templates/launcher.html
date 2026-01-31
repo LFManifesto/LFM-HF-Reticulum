@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReticulumHF</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-muted: #888;
+            --accent: #c92a2a;
+            --accent-hover: #e03131;
+            --success: #4ade80;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .mode-card {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .mode-card h2 {
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mode-card .icon {
+            font-size: 1.5rem;
+        }
+
+        .mode-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .mode-card .features {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .mode-card .features li {
+            margin: 4px 0;
+            padding-left: 20px;
+            position: relative;
+            color: var(--text-muted);
+        }
+
+        .mode-card .features li::before {
+            content: ">";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+
+        .mode-card.hf { border-left: 4px solid #f59e0b; }
+        .mode-card.lfn { border-left: 4px solid #3b82f6; }
+
+        .system-info {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .badge.setup-needed {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .badge.ready {
+            background: var(--success);
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ReticulumHF</h1>
+            <p class="subtitle">Reticulum Mesh Gateway</p>
+        </header>
+
+        <form action="/select/hf" method="POST" style="display: contents;">
+            <div class="mode-card hf" onclick="this.closest('form').submit()">
+                <h2>
+                    <span class="icon">&#128225;</span>
+                    HF Gateway
+                    {% if not config.hf_configured %}
+                    <span class="badge setup-needed">Setup Required</span>
+                    {% else %}
+                    <span class="badge ready">Ready</span>
+                    {% endif %}
+                </h2>
+                <p>Connect Reticulum devices to HF radio using FreeDV digital modes.</p>
+                <ul class="features">
+                    <li>FreeDV DATAC1/DATAC3/DATAC4 modes</li>
+                    <li>TCP gateway on port 4242</li>
+                    <li>Works offline - no internet required</li>
+                </ul>
+            </div>
+        </form>
+
+        <form action="/select/lfn" method="POST" style="display: contents;">
+            <div class="mode-card lfn" onclick="this.closest('form').submit()">
+                <h2>
+                    <span class="icon">&#127760;</span>
+                    Internet Gateway
+                    <span class="badge ready">Ready</span>
+                </h2>
+                <p>Connect Reticulum devices to the Lightfighter Network via I2P.</p>
+                <ul class="features">
+                    <li>I2P transport (anonymous, encrypted)</li>
+                    <li>TCP gateway on port 4242</li>
+                    <li>Requires ethernet for internet</li>
+                </ul>
+            </div>
+        </form>
+
+        <div class="system-info">
+            <p>IP: {{ system_info.ip_address }} | Host: {{ system_info.hostname }}</p>
+        </div>
+
+        <footer>
+            <p>v0.6.0-alpha | <a href="https://lightfightermanifesto.org" target="_blank">Light Fighter Manifesto</a></p>
+        </footer>
+    </div>
+</body>
+</html>

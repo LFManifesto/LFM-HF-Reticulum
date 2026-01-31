@@ -99,27 +99,25 @@ fi
 echo "[7/10] Installing ReticulumHF files..."
 
 sudo mkdir -p "$MOUNT_DIR/opt/reticulumhf"
-sudo cp -r "$PROJECT_DIR/setup-portal" "$MOUNT_DIR/opt/reticulumhf/"
+sudo cp -r "$PROJECT_DIR/launcher" "$MOUNT_DIR/opt/reticulumhf/"
 sudo cp -r "$PROJECT_DIR/configs" "$MOUNT_DIR/opt/reticulumhf/"
 sudo cp -r "$PROJECT_DIR/scripts" "$MOUNT_DIR/opt/reticulumhf/"
-sudo cp -r "$PROJECT_DIR/beacon" "$MOUNT_DIR/opt/reticulumhf/"
 sudo cp -r "$PROJECT_DIR/docs" "$MOUNT_DIR/opt/reticulumhf/"
 
+# Install all service and target files
 sudo cp "$PROJECT_DIR/services/"*.service "$MOUNT_DIR/etc/systemd/system/"
+sudo cp "$PROJECT_DIR/services/"*.target "$MOUNT_DIR/etc/systemd/system/"
 
 # Install ALSA configuration for USB audio (fixes freedvtnc2 "Unknown PCM" errors)
 sudo cp "$PROJECT_DIR/configs/asound.conf" "$MOUNT_DIR/etc/asound.conf"
 
+# Enable first-boot service
 sudo ln -sf /etc/systemd/system/reticulumhf-firstboot.service \
     "$MOUNT_DIR/etc/systemd/system/multi-user.target.wants/reticulumhf-firstboot.service"
 
-# Enable rnsd service (will be started by first-boot, then auto-start on subsequent boots)
-sudo ln -sf /etc/systemd/system/reticulumhf-rnsd.service \
-    "$MOUNT_DIR/etc/systemd/system/multi-user.target.wants/reticulumhf-rnsd.service"
-
-# Enable portal service
-sudo ln -sf /etc/systemd/system/reticulumhf-portal.service \
-    "$MOUNT_DIR/etc/systemd/system/multi-user.target.wants/reticulumhf-portal.service"
+# Enable launcher portal service (mode selector)
+sudo ln -sf /etc/systemd/system/reticulumhf-launcher.service \
+    "$MOUNT_DIR/etc/systemd/system/multi-user.target.wants/reticulumhf-launcher.service"
 
 # Enable wlan0 static IP service (runs before hostapd)
 sudo ln -sf /etc/systemd/system/reticulumhf-wlan.service \
@@ -128,6 +126,9 @@ sudo ln -sf /etc/systemd/system/reticulumhf-wlan.service \
 # Install hostapd rfkill override (unblock WiFi before starting hostapd)
 sudo mkdir -p "$MOUNT_DIR/etc/systemd/system/hostapd.service.d"
 sudo cp "$PROJECT_DIR/configs/hostapd-rfkill.conf" "$MOUNT_DIR/etc/systemd/system/hostapd.service.d/rfkill.conf"
+
+# Note: HF and LFN targets are NOT auto-enabled
+# User selects mode via launcher portal which starts appropriate target
 
 echo "[8/10] Running installation in chroot..."
 
