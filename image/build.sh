@@ -108,6 +108,9 @@ sudo cp "$PROJECT_DIR/services/"*.service "$MOUNT_DIR/etc/systemd/system/"
 # Install ALSA configuration for USB audio (fixes freedvtnc2 "Unknown PCM" errors)
 sudo cp "$PROJECT_DIR/configs/asound.conf" "$MOUNT_DIR/etc/asound.conf"
 
+# Install udev rule for auto-configuring Digirig/CM108 audio levels
+sudo cp "$PROJECT_DIR/configs/99-digirig-audio.rules" "$MOUNT_DIR/etc/udev/rules.d/"
+
 sudo ln -sf /etc/systemd/system/reticulumhf-firstboot.service \
     "$MOUNT_DIR/etc/systemd/system/multi-user.target.wants/reticulumhf-firstboot.service"
 

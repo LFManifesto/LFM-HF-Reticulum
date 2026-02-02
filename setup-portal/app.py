@@ -30,6 +30,8 @@ FREEDVTNC2_STARTUP_TIMEOUT_SECS = 15  # Wait for freedvtnc2 to start listening
 FREEDVTNC2_POLL_INTERVAL_SECS = 0.5   # Check interval during startup
 FREEDVTNC2_CMD_PORT = 8002  # Command interface port (freedvtnc2-lfm)
 FREEDVTNC2_CMD_TIMEOUT = 5  # Timeout for command interface
+RIGCTLD_PORT = 4532  # Hamlib rigctld TCP port
+RIGCTLD_TIMEOUT = 3  # Timeout for rigctld health check
 
 
 def freedvtnc2_command(command: str, timeout: float = FREEDVTNC2_CMD_TIMEOUT) -> Tuple[bool, str]:
@@ -56,6 +58,59 @@ def freedvtnc2_command(command: str, timeout: float = FREEDVTNC2_CMD_TIMEOUT) ->
         return False, "ERROR freedvtnc2 not running or command interface disabled"
     except Exception as e:
         return False, f"ERROR {str(e)}"
+
+
+def rigctld_health_check(timeout: float = RIGCTLD_TIMEOUT) -> Tuple[bool, dict]:
+    """
+    Check rigctld health by sending a frequency query command.
+
+    Returns (success, details) tuple where details contains:
+    - connected: bool - TCP connection succeeded
+    - responding: bool - rigctld returned valid response
+    - frequency: int - current frequency in Hz (if available)
+    - error: str - error message (if failed)
+    """
+    result = {
+        "connected": False,
+        "responding": False,
+        "frequency": None,
+        "error": None
+    }
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        sock.connect(('127.0.0.1', RIGCTLD_PORT))
+        result["connected"] = True
+
+        # Send 'f' command to get frequency (simplest rigctld command)
+        sock.send(b"f\n")
+        response = sock.recv(256).decode('utf-8').strip()
+        sock.close()
+
+        # rigctld returns frequency in Hz or error code
+        if response.startswith("RPRT"):
+            # Error response like "RPRT -1"
+            result["error"] = f"rigctld error: {response}"
+        else:
+            try:
+                freq = int(response)
+                result["responding"] = True
+                result["frequency"] = freq
+            except ValueError:
+                result["error"] = f"Unexpected response: {response[:50]}"
+
+        return result["responding"], result
+
+    except socket.timeout:
+        result["error"] = "Connection timeout"
+        return False, result
+    except ConnectionRefusedError:
+        result["error"] = "rigctld not running"
+        return False, result
+    except Exception as e:
+        result["error"] = str(e)
+        return False, result
 
 app = Flask(__name__)
 
@@ -378,8 +433,25 @@ def index():
 @app.route("/status")
 def status():
     """System status page (shown after setup)."""
+    # Get audio card from config for CLI commands display
+    audio_card = None
+    env_file = Path("/etc/reticulumhf/config.env")
+    if env_file.exists():
+        try:
+            content = env_file.read_text()
+            for line in content.split('\n'):
+                if line.startswith("AUDIO_CARD="):
+                    try:
+                        audio_card = int(line.split("=", 1)[1].strip())
+                    except ValueError:
+                        pass
+                    break
+        except Exception:
+            pass
+
     return render_template("status.html",
-                           system_info=get_system_info())
+                           system_info=get_system_info(),
+                           audio_card=audio_card)
 
 
 @app.route("/api/detect-hardware")
@@ -726,6 +798,181 @@ def api_modem_levels():
                 except ValueError:
                     levels[key.lower()] = value
     return jsonify(levels)
+
+
+@app.route("/api/rigctld-health")
+def api_rigctld_health():
+    """
+    Check rigctld health via TCP connection test.
+
+    Returns connection status, whether rigctld is responding to commands,
+    and current frequency if available.
+    """
+    success, details = rigctld_health_check()
+    return jsonify({
+        "success": success,
+        "healthy": success,
+        "connected": details.get("connected", False),
+        "responding": details.get("responding", False),
+        "frequency": details.get("frequency"),
+        "error": details.get("error")
+    })
+
+
+def parse_rnstatus_output(output: str) -> dict:
+    """
+    Parse rnstatus output to extract interface statistics.
+
+    rnstatus -a output format:
+    ```
+    Reticulum Transport Instance <hash> running
+
+    Shared Instance: Yes
+    ...
+
+     [AutoInterface[Default Interface]]
+       Status  : Online
+       Mode    : Access Point
+       RX      : 1234 bytes
+       TX      : 5678 bytes
+
+     [TCPServerInterface[TCP Gateway]]
+       Status  : Online
+       Mode    : Boundary
+       RX      : 456 bytes
+       TX      : 789 bytes
+    ```
+
+    Returns structured data with interface info, byte counts, and status.
+    """
+    result = {
+        "interfaces": [],
+        "transport_enabled": False,
+        "transport_id": None
+    }
+
+    lines = output.split('\n')
+    current_interface = None
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Check for transport status
+        if "Transport Instance" in stripped:
+            result["transport_enabled"] = True
+            # Extract transport ID if present: "Transport Instance <hash> running"
+            if "<" in stripped and ">" in stripped:
+                start = stripped.find("<") + 1
+                end = stripped.find(">")
+                result["transport_id"] = stripped[start:end]
+
+        # Detect interface block start: "[InterfaceType[Name]]"
+        # Line format: " [TCPServerInterface[TCP Gateway]]"
+        if stripped.startswith("[") and "]" in stripped:
+            # Save previous interface if exists
+            if current_interface and current_interface.get("name"):
+                result["interfaces"].append(current_interface)
+
+            current_interface = {
+                "name": None,
+                "type": None,
+                "status": "unknown",
+                "mode": None,
+                "rx_bytes": 0,
+                "tx_bytes": 0
+            }
+
+            # Parse: [InterfaceType[Name]]
+            # Find the interface type (text before first [)
+            inner = stripped[1:]  # Remove leading [
+            if "[" in inner:
+                type_end = inner.find("[")
+                current_interface["type"] = inner[:type_end]
+                # Extract name between inner brackets
+                name_start = type_end + 1
+                name_end = inner.find("]", name_start)
+                if name_end > name_start:
+                    current_interface["name"] = inner[name_start:name_end]
+
+        # Parse interface properties (indented lines after interface header)
+        elif current_interface and ":" in stripped:
+            key, _, value = stripped.partition(":")
+            key = key.strip().lower()
+            value = value.strip()
+
+            if key == "status":
+                current_interface["status"] = "online" if value.lower() == "online" else "offline"
+            elif key == "mode":
+                current_interface["mode"] = value
+            elif key == "rx":
+                # Parse "1234 bytes" or "1.2 KB" etc
+                try:
+                    # Extract numeric part
+                    parts = value.split()
+                    if parts:
+                        num_str = parts[0].replace(",", "")
+                        current_interface["rx_bytes"] = int(float(num_str))
+                except (ValueError, IndexError):
+                    pass
+            elif key == "tx":
+                try:
+                    parts = value.split()
+                    if parts:
+                        num_str = parts[0].replace(",", "")
+                        current_interface["tx_bytes"] = int(float(num_str))
+                except (ValueError, IndexError):
+                    pass
+
+    # Don't forget the last interface
+    if current_interface and current_interface.get("name"):
+        result["interfaces"].append(current_interface)
+
+    return result
+
+
+@app.route("/api/rns-stats")
+def api_rns_stats():
+    """
+    Get RNS interface statistics in structured format.
+
+    Returns interface list with TX/RX byte counts, packet counts, and status.
+    """
+    try:
+        result = subprocess.run(
+            ["su", "-", "pi", "-c", "/home/pi/.local/bin/rnstatus -a"],
+            capture_output=True, text=True, timeout=10
+        )
+
+        if result.returncode == 0 and result.stdout:
+            stats = parse_rnstatus_output(result.stdout)
+            stats["success"] = True
+            stats["raw_output"] = result.stdout  # Include for debugging
+            return jsonify(stats)
+        elif "No shared RNS instance" in (result.stdout + result.stderr):
+            return jsonify({
+                "success": False,
+                "error": "RNS not running",
+                "interfaces": []
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.stderr.strip() or "rnstatus failed",
+                "interfaces": []
+            })
+
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "success": False,
+            "error": "Timeout getting RNS stats",
+            "interfaces": []
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "interfaces": []
+        })
 
 
 def validate_wifi_settings(ssid: str, password: str) -> Tuple[bool, str]:

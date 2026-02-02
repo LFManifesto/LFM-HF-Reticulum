@@ -675,6 +675,52 @@
       "power_watts": 100
     },
     {
+      "id": "kenwood_ts890",
+      "manufacturer": "Kenwood",
+      "model": "TS-890S",
+      "hamlib_id": 2040,
+      "baud_rate": 115200,
+      "ptt_method": "CAT",
+      "ptt_on_delay_ms": 200,
+      "ptt_off_delay_ms": 150,
+      "audio_interface": "builtin",
+      "audio_settings": {
+        "type": "builtin_usb",
+        "alsa_device": "USB Audio CODEC",
+        "rx_control": "Radio Menu 7-05 only (no ALSA mixer)",
+        "tx_control": "Radio Menu 7-04 only (no ALSA mixer)",
+        "radio_rx_menu": "Menu 7-05 (USB Audio Output Level): 5-7 (0-9 range)",
+        "radio_tx_menu": "Menu 7-04 (USB Audio Input Level): 3-5 (0-9 range)",
+        "alc_target": "Zero",
+        "alc_reversed": false,
+        "alc_guidance": "Kenwood: Target ZERO ALC. Control power via software audio level, not by driving ALC.",
+        "freedv_notes": "Built-in USB audio has NO useful ALSA mixer. All levels via radio Menu 7-04/7-05."
+      },
+      "serial_settings": {
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "none",
+        "handshake": "none",
+        "rts_state": "OFF",
+        "dtr_state": "OFF"
+      },
+      "setup_guide": {
+        "steps": [
+          {"setting": "Mode", "value": "USB-DATA", "how": "Press MODE → USB, then press DATA key"},
+          {"setting": "Menu 7-00 (USB Baud)", "value": "115200", "how": "Menu 7-00"},
+          {"setting": "Menu 7-01 (USB RTS)", "value": "OFF", "how": "Menu 7-01 (OFF for USB)"},
+          {"setting": "Menu 7-04 (USB Audio In)", "value": "4", "how": "Menu 7-04 (TX audio from Pi)"},
+          {"setting": "Menu 7-05 (USB Audio Out)", "value": "6", "how": "Menu 7-05 (RX audio to Pi)"},
+          {"setting": "Menu 4-09 (Data VOX)", "value": "OFF", "how": "Menu 4-09 (use CAT PTT)"}
+        ],
+        "note": "Built-in USB audio. High-end SDR transceiver with excellent filtering.",
+        "sources": ["https://www.kenwood.com/i/products/info/amateur/ts_890s/"]
+      },
+      "notes": "Built-in USB audio - no external interface needed. Flagship SDR transceiver.",
+      "tested": false,
+      "power_watts": 100
+    },
+    {
       "id": "kenwood_ts480",
       "manufacturer": "Kenwood",
       "model": "TS-480",

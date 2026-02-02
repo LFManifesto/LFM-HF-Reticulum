@@ -448,24 +448,65 @@ def detect_audio_devices() -> list:
     return devices
 
 
+def detect_cm108_gpio() -> Optional[dict]:
+    """
+    Detect CM108 GPIO device for hardware PTT.
+    CM108 chip (used in Digirig) has GPIO pins that can be used for PTT.
+    GPIO 3 (pin 13) is the standard PTT pin.
+
+    Returns dict with hidraw device path if found.
+    """
+    result = {
+        "found": False,
+        "hidraw_device": None,
+        "message": "CM108 GPIO not detected"
+    }
+
+    try:
+        # Look for hidraw devices
+        for hidraw_path in Path("/dev").glob("hidraw*"):
+            try:
+                # Check if this is a CM108 device using udevadm
+                udev_result = subprocess.run(
+                    ["udevadm", "info", "--query=property", f"--name={hidraw_path}"],
+                    capture_output=True, text=True, timeout=5
+                )
+                if udev_result.returncode == 0:
+                    output = udev_result.stdout
+                    # C-Media vendor ID is 0d8c
+                    if "ID_VENDOR_ID=0d8c" in output:
+                        result["found"] = True
+                        result["hidraw_device"] = str(hidraw_path)
+                        result["message"] = f"CM108 GPIO found at {hidraw_path}"
+                        break
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    return result
+
+
 def find_digirig() -> Optional[dict]:
     """
     Find Digirig Mobile device.
-    Returns dict with serial port, audio card, and detection status.
+    Returns dict with serial port, audio card, hidraw device, and detection status.
     Detection status can be: "full", "audio_only", "serial_only", or "none"
     """
     if MOCK_MODE:
         return {
             "serial_port": "/dev/ttyUSB0",
             "audio_card": 3,
+            "hidraw_device": "/dev/hidraw0",
             "found": True,
             "status": "full",
-            "message": "Digirig detected (audio + CAT)"
+            "message": "Digirig detected (audio + CAT + GPIO)"
         }
 
     result = {
         "serial_port": None,
         "audio_card": None,
+        "hidraw_device": None,
         "found": False,
         "status": "none",
         "message": "Not detected"
@@ -487,19 +528,31 @@ def find_digirig() -> Optional[dict]:
             result["audio_card"] = dev["card"]
             break
 
+    # Look for CM108 GPIO (hidraw device for PTT)
+    cm108_gpio = detect_cm108_gpio()
+    if cm108_gpio["found"]:
+        result["hidraw_device"] = cm108_gpio["hidraw_device"]
+
     # Determine detection status
     has_serial = result["serial_port"] is not None
     has_audio = result["audio_card"] is not None
+    has_gpio = result["hidraw_device"] is not None
 
     if has_serial and has_audio:
         result["found"] = True
         result["status"] = "full"
-        result["message"] = "Digirig detected (audio + CAT)"
+        if has_gpio:
+            result["message"] = "Digirig detected (audio + CAT + GPIO PTT)"
+        else:
+            result["message"] = "Digirig detected (audio + CAT)"
     elif has_audio:
         # Audio found but no serial - common if CAT cable not connected
         result["found"] = True  # Consider partial detection as "found" for usability
         result["status"] = "audio_only"
-        result["message"] = "Audio detected (CAT port not found - check USB cable)"
+        if has_gpio:
+            result["message"] = "Audio + GPIO detected (CAT port not found)"
+        else:
+            result["message"] = "Audio detected (CAT port not found - check USB cable)"
     elif has_serial:
         result["found"] = True
         result["status"] = "serial_only"

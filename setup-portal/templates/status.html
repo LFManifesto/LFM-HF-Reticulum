@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta name="theme-color" content="#c92a2a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ReticulumHF">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icon-192.svg">
     <title>ReticulumHF Gateway</title>
     <style>
         :root {
@@ -402,7 +408,7 @@
         <header>
             <h1>ReticulumHF Gateway</h1>
             <p class="subtitle" id="radio-config">Loading...</p>
-            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.3.0-alpha</p>
+            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">v0.3.1-alpha</p>
         </header>
 
         <!-- Gateway Status -->
@@ -510,17 +516,33 @@
         <!-- FreeDV Mode -->
         <div class="card">
             <div class="card-title">FreeDV Mode</div>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">
-                Start with DATAC3 (recommended). Use DATAC1 for strong signals, DATAC4 for weak/noisy paths.
-            </p>
 
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <select id="freedv-mode-select" style="flex: 1; padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.9rem;">
-                    <option value="DATAC1">DATAC1 (290 bps) - Best speed, needs strong signal</option>
-                    <option value="DATAC3">DATAC3 (124 bps) - Balanced, works in moderate conditions</option>
-                    <option value="DATAC4">DATAC4 (87 bps) - Most robust, works in poor conditions</option>
+                    <option value="DATAC1">DATAC1 - 980 bps, 1700 Hz (good conditions, SNR > 5 dB)</option>
+                    <option value="DATAC3">DATAC3 - 321 bps, 500 Hz (marginal conditions, SNR > 0 dB)</option>
+                    <option value="DATAC4">DATAC4 - 87 bps, 250 Hz (poor conditions, SNR > -4 dB)</option>
                 </select>
                 <button class="btn btn-small" onclick="changeFreeDVMode()">Apply</button>
+            </div>
+
+            <!-- Mode Selection Guide -->
+            <div style="background: var(--bg); border-radius: 6px; padding: 10px; margin-bottom: 10px;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">Mode Selection Guide</div>
+                <table class="config-table" style="font-size: 0.75rem;">
+                    <tr>
+                        <td style="width: 25%; color: var(--success); font-weight: 500;">DATAC1</td>
+                        <td>Strong signals, clear channel. Best throughput for local/regional NVIS.</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--warning); font-weight: 500;">DATAC3</td>
+                        <td>Default choice. Works in moderate noise. Good for unknown conditions.</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--error); font-weight: 500;">DATAC4</td>
+                        <td>Weak signals, high noise, long-distance DX. Slowest but most robust.</td>
+                    </tr>
+                </table>
             </div>
 
             <div style="background: rgba(201, 42, 42, 0.1); border-left: 3px solid var(--accent); padding: 10px; border-radius: 4px;">
@@ -531,6 +553,46 @@
             </div>
 
             <div id="freedv-mode-status" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;"></div>
+        </div>
+
+        <!-- Connection Health -->
+        <div class="card">
+            <div class="card-title">Connection Health</div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">
+                Live TCP connection tests (not just process checks)
+            </p>
+
+            <div class="health-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="health-item" id="health-cat">
+                    <div class="health-value" style="font-size: 1rem;">
+                        <span class="indicator indicator-pending" id="cat-health-indicator"></span>
+                    </div>
+                    <div class="health-label">CAT Control</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted);" id="cat-health-detail">Checking...</div>
+                </div>
+                <div class="health-item" id="health-modem">
+                    <div class="health-value" style="font-size: 1rem;">
+                        <span class="indicator indicator-pending" id="modem-health-indicator"></span>
+                    </div>
+                    <div class="health-label">Modem</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted);" id="modem-health-detail">Checking...</div>
+                </div>
+                <div class="health-item" id="health-rns">
+                    <div class="health-value" style="font-size: 1rem;">
+                        <span class="indicator indicator-pending" id="rns-health-indicator"></span>
+                    </div>
+                    <div class="health-label">RNS Transport</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted);" id="rns-health-detail">Checking...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RNS Interface Statistics -->
+        <div class="card">
+            <div class="card-title">Interface Statistics</div>
+            <div id="rns-interface-stats" style="font-size: 0.85rem;">
+                <div style="color: var(--text-muted);">Loading...</div>
+            </div>
         </div>
 
         <!-- Services -->
@@ -704,6 +766,16 @@
             <button class="btn btn-danger" onclick="shutdownPi()">Shutdown</button>
         </div>
 
+        <!-- PWA Install -->
+        <div id="pwa-install-container" style="display: none; margin-top: 14px;">
+            <button class="btn" id="pwa-install-btn" style="width: 100%; background: var(--accent);">
+                Install App
+            </button>
+            <p style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 6px;">
+                Add to home screen for quick access
+            </p>
+        </div>
+
         <footer>
             <p>ReticulumHF by <a href="https://lightfightermanifesto.org" target="_blank">Light Fighter Manifesto</a></p>
             <p style="margin-top: 4px;"><a href="https://github.com/LFManifesto/ReticulumHF" target="_blank">Documentation & Source</a></p>
@@ -729,10 +801,126 @@
 
     <script>
         let rxLevelInterval = null;
+        let healthCheckInterval = null;
 
         async function apiFetch(url, options = {}) {
             const bustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
             return fetch(bustUrl, { ...options, cache: 'no-store' });
+        }
+
+        // Format bytes to human readable
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // Format frequency in MHz
+        function formatFrequency(hz) {
+            if (!hz) return '--';
+            return (hz / 1000000).toFixed(3) + ' MHz';
+        }
+
+        // Connection health checks
+        async function checkConnectionHealth() {
+            // Check CAT (rigctld) health
+            try {
+                const catResponse = await apiFetch('/api/rigctld-health');
+                const catData = await catResponse.json();
+                const catIndicator = document.getElementById('cat-health-indicator');
+                const catDetail = document.getElementById('cat-health-detail');
+
+                if (catData.healthy) {
+                    catIndicator.className = 'indicator indicator-active';
+                    catDetail.textContent = catData.frequency ? formatFrequency(catData.frequency) : 'Connected';
+                    catDetail.style.color = 'var(--success)';
+                } else if (catData.connected) {
+                    catIndicator.className = 'indicator indicator-pending';
+                    catDetail.textContent = 'Connected but not responding';
+                    catDetail.style.color = 'var(--warning)';
+                } else {
+                    catIndicator.className = 'indicator indicator-inactive';
+                    catDetail.textContent = catData.error || 'Not connected';
+                    catDetail.style.color = 'var(--text-muted)';
+                }
+            } catch (err) {
+                document.getElementById('cat-health-indicator').className = 'indicator indicator-inactive';
+                document.getElementById('cat-health-detail').textContent = 'Check failed';
+            }
+
+            // Check modem (freedvtnc2) health
+            try {
+                const modemResponse = await apiFetch('/api/modem-status');
+                const modemData = await modemResponse.json();
+                const modemIndicator = document.getElementById('modem-health-indicator');
+                const modemDetail = document.getElementById('modem-health-detail');
+
+                if (modemData.online) {
+                    modemIndicator.className = 'indicator indicator-active';
+                    modemDetail.textContent = modemData.mode || 'Online';
+                    modemDetail.style.color = 'var(--success)';
+                } else {
+                    modemIndicator.className = 'indicator indicator-inactive';
+                    modemDetail.textContent = modemData.error || 'Not responding';
+                    modemDetail.style.color = 'var(--text-muted)';
+                }
+            } catch (err) {
+                document.getElementById('modem-health-indicator').className = 'indicator indicator-inactive';
+                document.getElementById('modem-health-detail').textContent = 'Check failed';
+            }
+
+            // Check RNS and get interface stats
+            try {
+                const rnsResponse = await apiFetch('/api/rns-stats');
+                const rnsData = await rnsResponse.json();
+                const rnsIndicator = document.getElementById('rns-health-indicator');
+                const rnsDetail = document.getElementById('rns-health-detail');
+                const statsContainer = document.getElementById('rns-interface-stats');
+
+                if (rnsData.success) {
+                    rnsIndicator.className = 'indicator indicator-active';
+                    rnsDetail.textContent = rnsData.transport_enabled ? 'Transport active' : 'Local only';
+                    rnsDetail.style.color = 'var(--success)';
+
+                    // Build interface stats display
+                    if (rnsData.interfaces && rnsData.interfaces.length > 0) {
+                        let html = '<table class="config-table" style="font-size: 0.8rem;">';
+                        html += '<tr style="border-bottom: 1px solid var(--border);"><td style="font-weight: 600;">Interface</td><td style="font-weight: 600;">RX</td><td style="font-weight: 600;">TX</td><td style="font-weight: 600;">Status</td></tr>';
+
+                        for (const iface of rnsData.interfaces) {
+                            const statusColor = iface.status === 'online' ? 'var(--success)' : 'var(--text-muted)';
+                            html += `<tr>
+                                <td style="color: var(--text-muted);">${iface.name || iface.type || 'Unknown'}</td>
+                                <td>${formatBytes(iface.rx_bytes || 0)}</td>
+                                <td>${formatBytes(iface.tx_bytes || 0)}</td>
+                                <td style="color: ${statusColor};">${iface.status || '--'}</td>
+                            </tr>`;
+                        }
+                        html += '</table>';
+                        statsContainer.innerHTML = html;
+                    } else {
+                        statsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem;">No interfaces detected</div>';
+                    }
+                } else {
+                    rnsIndicator.className = 'indicator indicator-inactive';
+                    rnsDetail.textContent = rnsData.error || 'Not running';
+                    rnsDetail.style.color = 'var(--text-muted)';
+                    statsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem;">RNS not running</div>';
+                }
+            } catch (err) {
+                document.getElementById('rns-health-indicator').className = 'indicator indicator-inactive';
+                document.getElementById('rns-health-detail').textContent = 'Check failed';
+                document.getElementById('rns-interface-stats').innerHTML = '<div style="color: var(--error); font-size: 0.8rem;">Failed to fetch stats</div>';
+            }
+        }
+
+        function startHealthCheckPolling() {
+            if (!healthCheckInterval) {
+                checkConnectionHealth(); // immediate first check
+                healthCheckInterval = setInterval(checkConnectionHealth, 5000); // every 5 seconds
+            }
         }
 
         // Load config info
@@ -1117,19 +1305,49 @@
         }
 
         function copyText(elementId) {
-            const text = document.getElementById(elementId).textContent;
-            const btn = document.getElementById(elementId).nextElementSibling;
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            const btn = element.nextElementSibling;
 
-            if (navigator.clipboard) {
+            // Try modern clipboard API first (requires HTTPS or localhost)
+            if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
-                    btn.textContent = 'Copied';
-                    btn.classList.add('copied');
-                    setTimeout(() => {
-                        btn.textContent = 'Copy';
-                        btn.classList.remove('copied');
-                    }, 2000);
+                    showCopySuccess(btn);
+                }).catch(() => {
+                    // Fallback if clipboard API fails
+                    fallbackCopy(text, btn);
                 });
+            } else {
+                // Fallback for HTTP connections
+                fallbackCopy(text, btn);
             }
+        }
+
+        function fallbackCopy(text, btn) {
+            // Create a temporary textarea to copy from
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showCopySuccess(btn);
+            } catch (err) {
+                btn.textContent = 'Failed';
+                setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function showCopySuccess(btn) {
+            btn.textContent = 'Copied';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = 'Copy';
+                btn.classList.remove('copied');
+            }, 2000);
         }
 
         function refreshStatus() {
@@ -1140,9 +1358,54 @@
             fetchConnectedClients();
         }
 
+        // PWA Install handling
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome from showing its own install prompt
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show our install button
+            document.getElementById('pwa-install-container').style.display = 'block';
+        });
+
+        document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+
+            // Show the install prompt
+            deferredPrompt.prompt();
+
+            // Wait for the user's response
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('PWA install outcome:', outcome);
+
+            // Clear the deferred prompt
+            deferredPrompt = null;
+            document.getElementById('pwa-install-container').style.display = 'none';
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('ReticulumHF PWA installed');
+            document.getElementById('pwa-install-container').style.display = 'none';
+        });
+
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+
         // Initial load
         refreshStatus();
         startRxLevelPolling();
+        startHealthCheckPolling();
 
         // Auto-refresh
         setInterval(refreshStatus, 30000);
