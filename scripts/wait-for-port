@@ -1,0 +1,16 @@
+#!/bin/bash
+# Wait for a TCP port to be listening
+# Usage: wait-for-port [port] [timeout_seconds]
+
+PORT=${1:-8001}
+TIMEOUT=${2:-30}
+
+for i in $(seq 1 $TIMEOUT); do
+    if python3 -c "import socket; s=socket.socket(); s.settimeout(1); exit(0 if s.connect_ex(('127.0.0.1', $PORT))==0 else 1)" 2>/dev/null; then
+        exit 0
+    fi
+    sleep 1
+done
+
+echo "Port $PORT not ready after ${TIMEOUT}s" >&2
+exit 1

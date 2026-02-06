@@ -25,3 +25,10 @@ ENV/
 # Local configuration
 .env
 .env.local
+
+# Claude Code
+.claude/
+
+# Test files
+test_*.py
+*_test.py
